@@ -1,4 +1,6 @@
+# ============================================
 # Python
+# ============================================
 __pycache__/
 *.py[cod]
 *$py.class
@@ -10,33 +12,62 @@ ENV/
 env.bak/
 venv.bak/
 
+# ============================================
 # ROS 2 Workspace
+# ============================================
 drone_landing_ws/build/
 drone_landing_ws/install/
 drone_landing_ws/log/
 
+# ============================================
 # C++ / Build Output
+# ============================================
 *.o
 *.obj
 *.exe
 *.dll
-*.so
 *.dylib
 build/
 
-# Image Outputs and Test Artifacts
+# ============================================
+# Image / Video Outputs and Debug Artifacts
+# ============================================
 *.png
 *.jpg
 *.jpeg
 debug_frame.png
 artifacts/
 
+# ============================================
 # Temporary and Log files
+# ============================================
 tmp_upstream/
 *.log
 *.ulg
+*.txt
+!requirements.txt
 
+# ============================================
+# Debug / scratch files from development
+# ============================================
+old_inspection.sdf
+transpose_texture.py
+drone_landing_ws/transpose_texture.py
+
+# ============================================
+# Planning & Notes (not part of the project)
+# ============================================
+master_plan.md
+UPSTREAM_BASELINE.md
+implementation_plan.md
+walkthrough.md
+snapshot_report.md
+camera_gate_report.md
+task.md
+
+# ============================================
 # OS generated files
+# ============================================
 .DS_Store
 .DS_Store?
 ._*
@@ -45,10 +76,16 @@ tmp_upstream/
 ehthumbs.db
 Thumbs.db
 
+# ============================================
 # IDEs and Editors
+# ============================================
 .vscode/
 .idea/
 *.swp
 *.swo
+*~
 
-master_plan.md
+# ============================================
+# Docker (runtime / caches)
+# ============================================
+docker/versions.env

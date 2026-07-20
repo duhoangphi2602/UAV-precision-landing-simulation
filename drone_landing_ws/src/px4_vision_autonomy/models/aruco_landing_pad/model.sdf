@@ -20,10 +20,12 @@
         </geometry>
         <material>
           <diffuse>1 1 1 1</diffuse>
-          <specular>0.4 0.4 0.4 1</specular>
+          <specular>0 0 0 1</specular>
           <pbr>
             <metal>
               <albedo_map>model://aruco_landing_pad/aruco_marker_0.png</albedo_map>
+              <roughness>1.0</roughness>
+              <metalness>0.0</metalness>
             </metal>
           </pbr>
         </material>
