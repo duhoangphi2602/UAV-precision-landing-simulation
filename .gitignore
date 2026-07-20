@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# ROS 2 Workspace
+drone_landing_ws/build/
+drone_landing_ws/install/
+drone_landing_ws/log/
+
+# C++ / Build Output
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.dylib
+build/
+
+# Image Outputs and Test Artifacts
+*.png
+*.jpg
+*.jpeg
+debug_frame.png
+artifacts/
+
+# Temporary and Log files
+tmp_upstream/
+*.log
+*.ulg
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo

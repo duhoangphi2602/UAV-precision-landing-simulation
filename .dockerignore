@@ -1,0 +1,8 @@
+.git
+.venv
+.vscode
+drone_landing_ws/build
+drone_landing_ws/install
+drone_landing_ws/log
+artifacts/
+tmp_upstream
