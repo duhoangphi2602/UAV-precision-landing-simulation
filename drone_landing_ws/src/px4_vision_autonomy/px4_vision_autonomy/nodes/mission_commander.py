@@ -144,6 +144,7 @@ class MissionCommander(Node):
                 await self.drone.action.takeoff()
                 await asyncio.sleep(10) # Wait for takeoff
                 try:
+                    self.get_logger().info("Resolved takeoff waypoint: North=0.0, East=0.0, Down=-3.0")
                     await self.drone.offboard.set_position_ned(PositionNedYaw(0.0, 0.0, -3.0, 0.0))
                     await self.drone.offboard.start()
                     await asyncio.sleep(5)
@@ -154,6 +155,7 @@ class MissionCommander(Node):
                 
             elif self.state == STATE_NAVIGATE:
                 self.get_logger().info(f"Navigating to Inspection Point ({self.wp_north}, {self.wp_east}, {self.wp_down})")
+                self.get_logger().info(f"Resolved navigate waypoint: North={self.wp_north}, East={self.wp_east}, Down={self.wp_down}")
                 await self.drone.offboard.set_position_ned(PositionNedYaw(self.wp_north, self.wp_east, self.wp_down, 0.0))
                 await asyncio.sleep(10)
                 self.state = STATE_SCAN

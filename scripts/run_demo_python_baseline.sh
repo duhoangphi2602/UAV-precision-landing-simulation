@@ -64,25 +64,30 @@ if ! docker ps | grep -q "aruco"; then
 fi
 echo "ArUco detector alive!"
 
-echo "Waiting for PX4 readiness..."
+echo "Waiting for PX4 readiness (max 180s)..."
 wait_time=0
 px4_ready=false
-while [ $wait_time -lt 60 ]; do
-    if docker logs px4_sitl 2>&1 | grep -q "Ready for takeoff"; then
+while [ $wait_time -lt 180 ]; do
+    if docker logs px4_sitl 2>&1 | grep -q -E "Ready for takeoff|home set"; then
         px4_ready=true
         break
     fi
-    sleep 2
-    wait_time=$((wait_time + 2))
+    sleep 3
+    wait_time=$((wait_time + 3))
 done
 if [ "$px4_ready" = false ]; then
-    echo "WARN: PX4 'Ready for takeoff' not found in logs, proceeding anyway..."
+    echo "FAIL: PX4 sensors never initialized (no 'home set' or 'Ready for takeoff')."
+    echo "--- PX4 LOGS ---"
+    docker logs px4_sitl 2>&1 | tail -30
+    echo "--- GZ STATS ---"
+    docker exec px4_sitl bash -c "gz topic -e -t /world/inspection/stats -n 1" 2>/dev/null || true
+    exit 1
 else
-    echo "PX4 is Ready for takeoff!"
+    echo "PX4 is ready!"
 fi
 
 echo "Starting Mission Commander..."
-docker compose run --rm -d --name mission simulation bash -c "ros2 run px4_vision_autonomy mission_commander --ros-args -p control_source:=internal_python"
+docker compose run --rm -d --name mission simulation bash -c "ros2 run px4_vision_autonomy mission_commander --ros-args -p control_source:=internal_python -p wp_north:=0.0 -p wp_east:=5.8 -p wp_down:=-3.0 -p flip_x:=true -p flip_y:=true"
 
 echo "Polling mission status (max 300s)..."
 wait_time=0

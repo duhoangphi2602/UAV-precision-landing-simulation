@@ -64,7 +64,7 @@ class ArucoDetector(Node):
 
         self.last_time = time.time()
         self.fps = 0.0
-        self.mission_status = "UNKNOWN"
+        self.mission_status = "TEST (STATIC GATE)"
 
         self.get_logger().info(f'Aruco Detector Started. Listening on {self.camera_topic}')
 
@@ -82,7 +82,6 @@ class ArucoDetector(Node):
             cv_image = imgmsg_to_cv2(msg)
             
             if "SCAN" in self.mission_status and not hasattr(self, 'saved_debug_frame'):
-                import cv2
                 cv2.imwrite('/home/devuser/drone_landing_ws/src/px4_vision_autonomy/debug_frame.png', cv_image)
                 self.saved_debug_frame = True
                 self.get_logger().info("Saved debug camera frame to debug_frame.png")
@@ -143,7 +142,8 @@ class ArucoDetector(Node):
                         cv2.putText(cv_image, f"dx: {error_x:.1f} dy: {error_y:.1f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
 
             cv2.putText(cv_image, f"FPS: {self.fps:.1f}", (10, h - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
-            cv2.putText(cv_image, self.mission_status, (10, h - 35), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+            cv2.putText(cv_image, f"STATE: {self.mission_status}", (10, h - 35), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+            cv2.putText(cv_image, "CONTROL: PYTHON", (10, h - 60), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 165, 255), 2)
 
             debug_msg = cv2_to_imgmsg(cv_image, "bgr8")
             debug_msg.header = msg.header
