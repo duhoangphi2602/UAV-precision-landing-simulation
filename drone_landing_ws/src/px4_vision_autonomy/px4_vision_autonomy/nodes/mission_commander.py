@@ -146,7 +146,9 @@ class MissionCommander(Node):
                 await asyncio.sleep(10) # Wait for takeoff
                 try:
                     self.get_logger().info("Resolved takeoff waypoint: North=0.0, East=0.0, Down=-3.0")
-                    await self.drone.offboard.set_position_ned(PositionNedYaw(0.0, 0.0, -3.0, 0.0))
+                    for _ in range(3):
+                        await self.drone.offboard.set_position_ned(PositionNedYaw(0.0, 0.0, -3.0, 0.0))
+                        await asyncio.sleep(0.1)
                     await self.drone.offboard.start()
                     await asyncio.sleep(5)
                 except OffboardError as e:
