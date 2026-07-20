@@ -37,8 +37,13 @@ if [ "$mission_done" = false ]; then
     echo "TIMEOUT: Mission did not finish in 300s."
 fi
 
-echo "================ MISSION LOGS ================"
-docker logs mission || true
+echo "================ SAVING ALL LOGS ================"
+mkdir -p artifacts/logs
+docker logs mission > artifacts/logs/demo_cpp_mission.log 2>&1 || true
+docker logs cpp_control > artifacts/logs/demo_cpp_control.log 2>&1 || true
+docker logs aruco > artifacts/logs/demo_cpp_aruco.log 2>&1 || true
+docker logs viewer > artifacts/logs/demo_cpp_viewer.log 2>&1 || true
+docker logs px4_sitl > artifacts/logs/demo_cpp_px4.log 2>&1 || true
 echo "=============================================="
 
 echo "Demo script finished."

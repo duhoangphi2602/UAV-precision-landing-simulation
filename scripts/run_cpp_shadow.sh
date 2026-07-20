@@ -58,8 +58,11 @@ docker compose run --rm -d --name viewer simulation bash -c "ros2 run px4_vision
 
 echo "Checking ArUco detector process..."
 sleep 5
-if ! docker ps | grep -q "aruco"; then
+if ! docker ps | grep -q aruco; then
     echo "FAIL: aruco_detector process died."
+    docker logs aruco || true
+    echo "Cleaning up containers..."
+    docker compose down -v
     exit 1
 fi
 echo "ArUco detector alive!"
@@ -113,12 +116,14 @@ if [ "$mission_done" = false ]; then
     echo "TIMEOUT: Mission did not finish in 300s."
 fi
 
-echo "================ MISSION LOGS ================"
-docker logs mission || true
+echo "================ SAVING ALL LOGS ================"
+mkdir -p artifacts/logs
+docker logs mission > artifacts/logs/shadow_mission.log 2>&1 || true
+docker logs shadow_logger > artifacts/logs/shadow_logger.log 2>&1 || true
+docker logs cpp_shadow > artifacts/logs/shadow_cpp.log 2>&1 || true
+docker logs aruco > artifacts/logs/shadow_aruco.log 2>&1 || true
+docker logs px4_sitl > artifacts/logs/shadow_px4.log 2>&1 || true
 echo "=============================================="
 
-echo "================ SHADOW LOGGER ================"
-docker logs shadow_logger || true
-echo "=============================================="
-
-echo "Demo script finished."
+echo "Cleanup complete."
+./scripts/stop_demo.sh
