@@ -13,8 +13,33 @@ sleep 2
 docker compose run --rm -d --name aruco simulation bash -c "ros2 run px4_vision_autonomy aruco_detector --ros-args -p camera_topic:=/camera"
 docker compose run --rm -d --name viewer simulation bash -c "ros2 run px4_vision_autonomy camera_viewer"
 docker compose run --rm -d --name cpp_control simulation bash -c "ros2 launch precision_landing_control_cpp control_cpp.launch.py"
-docker compose run --rm -d --name mission simulation bash -c "ros2 run px4_vision_autonomy mission_commander --ros-args -p control_source:=external_cpp"
+docker compose run --rm -d --name mission simulation bash -c "ros2 run px4_vision_autonomy mission_commander --ros-args -p control_source:=external_cpp -p wp_north:=0.0 -p wp_east:=5.8 -p wp_down:=-3.0 -p flip_x:=true -p flip_y:=true"
 
-echo "Demo is running. Use 'make stop' to stop."
-sleep 120
+echo "Demo is running."
+wait_time=0
+mission_done=false
+while [ $wait_time -lt 300 ]; do
+    if docker logs mission 2>&1 | grep -q -E "Landing detected|Failsafe|FAILSAFE|LAND|Completed|Landed"; then
+        echo "Mission terminal state reached!"
+        mission_done=true
+        break
+    fi
+    if ! docker ps | grep -q "mission"; then
+        echo "Mission container exited."
+        mission_done=true
+        break
+    fi
+    sleep 5
+    wait_time=$((wait_time + 5))
+done
+
+if [ "$mission_done" = false ]; then
+    echo "TIMEOUT: Mission did not finish in 300s."
+fi
+
+echo "================ MISSION LOGS ================"
+docker logs mission || true
+echo "=============================================="
+
+echo "Demo script finished."
 ./scripts/stop_demo.sh

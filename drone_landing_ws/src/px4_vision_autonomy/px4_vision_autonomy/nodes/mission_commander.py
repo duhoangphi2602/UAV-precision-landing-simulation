@@ -79,6 +79,7 @@ class MissionCommander(Node):
             10)
             
         self.status_pub = self.create_publisher(String, '/mission/status', 10)
+        self.cmd_vel_py_pub = self.create_publisher(Twist, '/precision_landing/cmd_vel_py', 10)
 
         self.last_cpp_cmd_time = 0
         self.cpp_vel_x = 0.0
@@ -214,6 +215,11 @@ class MissionCommander(Node):
                 
                 # Debug log to help tune mapping
                 self.get_logger().info(f'ALIGN: err_x={err_x:.1f} err_y={err_y:.1f} -> vel_x={vel_x:.3f} vel_y={vel_y:.3f} swap={self.swap_axes} flip_x={self.flip_x} flip_y={self.flip_y}')
+                
+                tmsg = Twist()
+                tmsg.linear.x = float(vel_x)
+                tmsg.linear.y = float(vel_y)
+                self.cmd_vel_py_pub.publish(tmsg)
 
                 # Check if centered
                 if abs(err_x) < self.pixel_error_threshold and abs(err_y) < self.pixel_error_threshold:
@@ -268,6 +274,12 @@ class MissionCommander(Node):
                 if current_alt < 0.3:
                     self.get_logger().info("Low altitude reached. Landing.")
                     self.state = STATE_LAND
+
+                tmsg = Twist()
+                tmsg.linear.x = float(vel_x)
+                tmsg.linear.y = float(vel_y)
+                tmsg.linear.z = float(vel_z)
+                self.cmd_vel_py_pub.publish(tmsg)
 
                 await self.drone.offboard.set_velocity_body(VelocityBodyYawspeed(vel_x, vel_y, vel_z, 0.0))
                 await asyncio.sleep(0.1)

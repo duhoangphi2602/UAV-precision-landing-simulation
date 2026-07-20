@@ -35,6 +35,9 @@ public:
         this->declare_parameter("integral_min", -0.2);
         this->declare_parameter("integral_max", 0.2);
         this->declare_parameter("stale_timeout", 1.0); // seconds
+        this->declare_parameter("swap_axes", false);
+        this->declare_parameter("flip_x", false);
+        this->declare_parameter("flip_y", false);
 
         PIDConfig config_x, config_y;
         config_x.kp = this->get_parameter("kp_x").as_double();
@@ -107,8 +110,27 @@ private:
             // or x error -> x velocity. Wait, usually x error is horizontal on image. 
             // In px4_vision_autonomy Python code, let's see how they do it.
             // But here we'll just compute generic output from x and y error.
-            double vx = pid_x_->compute(latest_error_.x, dt);
-            double vy = pid_y_->compute(latest_error_.y, dt);
+            bool swap_axes = this->get_parameter("swap_axes").as_bool();
+            bool flip_x = this->get_parameter("flip_x").as_bool();
+            bool flip_y = this->get_parameter("flip_y").as_bool();
+            
+            double vx = 0.0;
+            double vy = 0.0;
+            
+            if (swap_axes) {
+                vx = pid_x_->compute(latest_error_.x, dt);
+                vy = pid_y_->compute(latest_error_.y, dt);
+            } else {
+                vy = pid_x_->compute(latest_error_.x, dt);
+                vx = -pid_y_->compute(latest_error_.y, dt);
+            }
+            
+            if (flip_x) {
+                vx = -vx;
+            }
+            if (flip_y) {
+                vy = -vy;
+            }
             
             cmd_msg.linear.x = vx;
             cmd_msg.linear.y = vy;

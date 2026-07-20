@@ -9,6 +9,9 @@ test:
 demo-python:
 	./scripts/run_demo_python_baseline.sh
 
+shadow-cpp:
+	./scripts/run_cpp_shadow.sh
+
 demo-cpp:
 	./scripts/run_demo_cpp_control.sh
 

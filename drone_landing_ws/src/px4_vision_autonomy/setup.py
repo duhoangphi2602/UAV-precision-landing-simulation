@@ -38,6 +38,7 @@ setup(
             'camera_viewer = px4_vision_autonomy.nodes.camera_viewer:main',
             'aruco_detector = px4_vision_autonomy.nodes.aruco_detector:main',
             'mission_commander = px4_vision_autonomy.nodes.mission_commander:main',
+            'shadow_logger = px4_vision_autonomy.nodes.shadow_logger:main',
         ],
     },
 )
