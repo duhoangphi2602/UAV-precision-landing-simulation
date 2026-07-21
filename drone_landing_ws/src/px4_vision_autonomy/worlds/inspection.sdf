@@ -12,9 +12,14 @@
 
     <scene>
       <grid>false</grid>
-      <ambient>0.4 0.4 0.4 1</ambient>
+      <ambient>0.6 0.6 0.6 1</ambient>
       <background>0.7 0.7 0.7 1</background>
       <shadows>true</shadows>
+      <sky>
+        <clouds>
+          <speed>0.6</speed>
+        </clouds>
+      </sky>
     </scene>
 
     <!-- Ground Plane (matches PX4 default.sdf exactly) -->
@@ -44,9 +49,9 @@
             </plane>
           </geometry>
           <material>
-            <ambient>0.8 0.8 0.8 1</ambient>
-            <diffuse>0.8 0.8 0.8 1</diffuse>
-            <specular>0.8 0.8 0.8 1</specular>
+            <ambient>0.15 0.15 0.15 1</ambient>
+            <diffuse>0.15 0.15 0.15 1</diffuse>
+            <specular>0.05 0.05 0.05 1</specular>
           </material>
         </visual>
         <pose>0 0 0 0 -0 0</pose>
@@ -103,87 +108,143 @@
       <longitude_deg>8.546163739800146</longitude_deg>
       <elevation>0</elevation>
     </spherical_coordinates>
-    <!-- Visual Polish Entities -->
-    <model name='box1'>
-      <pose>6.5 1.5 0.5 0 0 0</pose>
-      <static>true</static>
-      <link name='link'>
-        <visual name='visual'>
-          <geometry><box><size>1 1 1</size></box></geometry>
-          <material>
-            <ambient>0.8 0.2 0.2 1</ambient>
-            <diffuse>0.8 0.2 0.2 1</diffuse>
-          </material>
-        </visual>
-      </link>
-    </model>
-
-    <model name='box2'>
-      <pose>4.0 -2.0 0.5 0 0 0.5</pose>
-      <static>true</static>
-      <link name='link'>
-        <visual name='visual'>
-          <geometry><box><size>1.5 1 1</size></box></geometry>
-          <material>
-            <ambient>0.2 0.8 0.2 1</ambient>
-            <diffuse>0.2 0.8 0.2 1</diffuse>
-          </material>
-        </visual>
-      </link>
-    </model>
-
-    <model name='cylinder_blue'>
-      <pose>7.0 -1.5 0.75 0 0 0</pose>
-      <static>true</static>
-      <link name='link'>
-        <visual name='visual'>
-          <geometry><cylinder><radius>0.4</radius><length>1.5</length></cylinder></geometry>
-          <material>
-            <ambient>0.2 0.2 0.8 1</ambient>
-            <diffuse>0.2 0.2 0.8 1</diffuse>
-          </material>
-        </visual>
-      </link>
-    </model>
+    <!-- Realistic Polish Entities -->
     
-    <model name='cylinder_yellow'>
-      <pose>4.5 2.5 0.6 0 0 0</pose>
+    <!-- Tree 1 -->
+    <model name='tree_1'>
+      <pose>4.0 -3.0 0 0 0 0</pose>
       <static>true</static>
-      <link name='link'>
-        <visual name='visual'>
-          <geometry><cylinder><radius>0.6</radius><length>1.2</length></cylinder></geometry>
+      <!-- Trunk -->
+      <link name='trunk'>
+        <pose>0 0 0.5 0 0 0</pose>
+        <visual name='trunk_visual'>
+          <geometry><cylinder><radius>0.2</radius><length>1.0</length></cylinder></geometry>
           <material>
-            <ambient>0.8 0.8 0.2 1</ambient>
-            <diffuse>0.8 0.8 0.2 1</diffuse>
+            <ambient>0.4 0.2 0.0 1</ambient>
+            <diffuse>0.4 0.2 0.0 1</diffuse>
+          </material>
+        </visual>
+        <collision name='trunk_collision'>
+          <geometry><cylinder><radius>0.2</radius><length>1.0</length></cylinder></geometry>
+        </collision>
+      </link>
+      <!-- Leaves -->
+      <link name='leaves'>
+        <pose>0 0 1.5 0 0 0</pose>
+        <visual name='leaves_visual'>
+          <geometry><sphere><radius>0.8</radius></sphere></geometry>
+          <material>
+            <ambient>0.1 0.5 0.1 1</ambient>
+            <diffuse>0.1 0.5 0.1 1</diffuse>
+          </material>
+        </visual>
+        <collision name='leaves_collision'>
+          <geometry><sphere><radius>0.8</radius></sphere></geometry>
+        </collision>
+      </link>
+    </model>
+
+    <!-- Tree 2 -->
+    <model name='tree_2'>
+      <pose>7.5 2.0 0 0 0 0</pose>
+      <static>true</static>
+      <link name='trunk'>
+        <pose>0 0 0.4 0 0 0</pose>
+        <visual name='trunk_visual'>
+          <geometry><cylinder><radius>0.15</radius><length>0.8</length></cylinder></geometry>
+          <material>
+            <ambient>0.4 0.2 0.0 1</ambient>
+            <diffuse>0.4 0.2 0.0 1</diffuse>
+          </material>
+        </visual>
+      </link>
+      <link name='leaves'>
+        <pose>0 0 1.2 0 0 0</pose>
+        <visual name='leaves_visual'>
+          <geometry><sphere><radius>0.6</radius></sphere></geometry>
+          <material>
+            <ambient>0.2 0.6 0.1 1</ambient>
+            <diffuse>0.2 0.6 0.1 1</diffuse>
           </material>
         </visual>
       </link>
     </model>
 
-    <model name='sphere_orange'>
-      <pose>3.5 0.0 0.5 0 0 0</pose>
+    <!-- Building / Warehouse -->
+    <model name='warehouse'>
+      <pose>2.5 3.5 0 0 0 -0.2</pose>
       <static>true</static>
-      <link name='link'>
-        <visual name='visual'>
-          <geometry><sphere><radius>0.5</radius></sphere></geometry>
+      <link name='base'>
+        <pose>0 0 1.0 0 0 0</pose>
+        <visual name='base_visual'>
+          <geometry><box><size>3.0 2.0 2.0</size></box></geometry>
           <material>
-            <ambient>0.9 0.5 0.1 1</ambient>
-            <diffuse>0.9 0.5 0.1 1</diffuse>
+            <ambient>0.7 0.7 0.7 1</ambient>
+            <diffuse>0.7 0.7 0.7 1</diffuse>
           </material>
         </visual>
+        <collision name='base_collision'>
+          <geometry><box><size>3.0 2.0 2.0</size></box></geometry>
+        </collision>
+      </link>
+      <link name='roof'>
+        <pose>0 0 2.25 0 0 0</pose>
+        <visual name='roof_visual'>
+          <geometry><box><size>3.2 2.2 0.5</size></box></geometry>
+          <material>
+            <ambient>0.2 0.2 0.4 1</ambient>
+            <diffuse>0.2 0.2 0.4 1</diffuse>
+          </material>
+        </visual>
+        <collision name='roof_collision'>
+          <geometry><box><size>3.2 2.2 0.5</size></box></geometry>
+        </collision>
       </link>
     </model>
 
-    <model name='box3_purple'>
-      <pose>5.8 -4.0 1.0 0 0 -0.2</pose>
+    <!-- Shipping Container -->
+    <model name='shipping_container'>
+      <pose>8.0 -1.5 0 0 0 0.5</pose>
       <static>true</static>
-      <link name='link'>
+      <link name='body'>
+        <pose>0 0 0.8 0 0 0</pose>
         <visual name='visual'>
-          <geometry><box><size>2 0.5 2</size></box></geometry>
+          <geometry><box><size>3.0 1.0 1.6</size></box></geometry>
           <material>
-            <ambient>0.5 0.1 0.8 1</ambient>
-            <diffuse>0.5 0.1 0.8 1</diffuse>
+            <ambient>0.8 0.3 0.1 1</ambient>
+            <diffuse>0.8 0.3 0.1 1</diffuse>
           </material>
+        </visual>
+        <collision name='collision'>
+          <geometry><box><size>3.0 1.0 1.6</size></box></geometry>
+        </collision>
+      </link>
+    </model>
+
+    <!-- Landing Zone Markings -->
+    <model name='lz_border'>
+      <pose>5.8 0 0.005 0 0 0</pose>
+      <static>true</static>
+      <link name='border'>
+        <visual name='v1'>
+          <pose>0 1.0 0 0 0 0</pose>
+          <geometry><box><size>2.2 0.2 0.001</size></box></geometry>
+          <material><ambient>1 1 0 1</ambient><diffuse>1 1 0 1</diffuse></material>
+        </visual>
+        <visual name='v2'>
+          <pose>0 -1.0 0 0 0 0</pose>
+          <geometry><box><size>2.2 0.2 0.001</size></box></geometry>
+          <material><ambient>1 1 0 1</ambient><diffuse>1 1 0 1</diffuse></material>
+        </visual>
+        <visual name='v3'>
+          <pose>1.0 0 0 0 0 0</pose>
+          <geometry><box><size>0.2 2.0 0.001</size></box></geometry>
+          <material><ambient>1 1 0 1</ambient><diffuse>1 1 0 1</diffuse></material>
+        </visual>
+        <visual name='v4'>
+          <pose>-1.0 0 0 0 0 0</pose>
+          <geometry><box><size>0.2 2.0 0.001</size></box></geometry>
+          <material><ambient>1 1 0 1</ambient><diffuse>1 1 0 1</diffuse></material>
         </visual>
       </link>
     </model>
