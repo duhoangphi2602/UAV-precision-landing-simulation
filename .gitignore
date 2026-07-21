@@ -33,6 +33,7 @@ build/
 # Image / Video Outputs and Debug Artifacts
 # ============================================
 *.png
+!drone_landing_ws/src/px4_vision_autonomy/models/aruco_landing_pad/*.png
 *.jpg
 *.jpeg
 debug_frame.png
