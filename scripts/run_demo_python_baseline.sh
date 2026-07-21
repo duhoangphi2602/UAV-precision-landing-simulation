@@ -11,6 +11,11 @@ trap cleanup EXIT
 
 ./scripts/allow_x11.sh
 
+if [ ! -d "drone_landing_ws/install" ]; then
+    echo "ROS 2 workspace not built. Building now..."
+    docker compose run --rm simulation bash -c "source /opt/ros/humble/setup.bash && cd /home/devuser/drone_landing_ws && colcon build"
+fi
+
 echo "Starting Gazebo and PX4..."
 docker compose run --rm -d --name px4_sitl simulation bash -c "cp /home/devuser/drone_landing_ws/src/px4_vision_autonomy/worlds/inspection.sdf /opt/PX4-Autopilot/Tools/simulation/gz/worlds/ && cp -r /home/devuser/drone_landing_ws/src/px4_vision_autonomy/models/aruco_landing_pad /opt/PX4-Autopilot/Tools/simulation/gz/models/ && export PX4_GZ_WORLD=inspection && cd /opt/PX4-Autopilot && make px4_sitl gz_x500_mono_cam_down"
 
