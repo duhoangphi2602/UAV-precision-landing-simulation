@@ -1,0 +1,114 @@
+# CLEANUP MANIFEST
+
+## tmp_upstream/
+- PATH: `tmp_upstream/`
+- EXISTED_BEFORE_PHASE: NO
+- TRACKING_STATUS: MISSING
+- SIZE: N/A
+- REFERENCE_FOUND: NO
+- CLASSIFICATION: ALREADY_ABSENT
+- REASON: Was cleaned up in previous phases.
+- RISK_IF_REMOVED: None.
+- ACTION_TAKEN: NONE
+
+## fix_waypoint.py
+- PATH: `fix_waypoint.py`
+- EXISTED_BEFORE_PHASE: NO
+- TRACKING_STATUS: MISSING
+- SIZE: N/A
+- REFERENCE_FOUND: NO
+- CLASSIFICATION: ALREADY_ABSENT
+- REASON: Cleaned up in previous phases.
+- RISK_IF_REMOVED: None.
+- ACTION_TAKEN: NONE
+
+## old_inspection.sdf
+- PATH: `old_inspection.sdf`
+- EXISTED_BEFORE_PHASE: NO
+- TRACKING_STATUS: MISSING
+- SIZE: N/A
+- REFERENCE_FOUND: NO
+- CLASSIFICATION: ALREADY_ABSENT
+- REASON: Cleaned up in previous phases.
+- RISK_IF_REMOVED: None.
+- ACTION_TAKEN: NONE
+
+## transpose_texture.py
+- PATH: `transpose_texture.py`
+- EXISTED_BEFORE_PHASE: NO
+- TRACKING_STATUS: MISSING
+- SIZE: N/A
+- REFERENCE_FOUND: NO
+- CLASSIFICATION: ALREADY_ABSENT
+- REASON: Cleaned up in previous phases.
+- RISK_IF_REMOVED: None.
+- ACTION_TAKEN: NONE
+
+## test_topics.txt
+- PATH: `test_topics.txt`
+- EXISTED_BEFORE_PHASE: NO
+- TRACKING_STATUS: MISSING
+- SIZE: N/A
+- REFERENCE_FOUND: NO
+- CLASSIFICATION: ALREADY_ABSENT
+- REASON: Cleaned up in previous phases.
+- RISK_IF_REMOVED: None.
+- ACTION_TAKEN: NONE
+
+## imu.txt
+- PATH: `imu.txt`
+- EXISTED_BEFORE_PHASE: NO
+- TRACKING_STATUS: MISSING
+- SIZE: N/A
+- REFERENCE_FOUND: NO
+- CLASSIFICATION: ALREADY_ABSENT
+- REASON: Cleaned up in previous phases.
+- RISK_IF_REMOVED: None.
+- ACTION_TAKEN: NONE
+
+## ps_out.txt
+- PATH: `ps_out.txt`
+- EXISTED_BEFORE_PHASE: NO
+- TRACKING_STATUS: MISSING
+- SIZE: N/A
+- REFERENCE_FOUND: NO
+- CLASSIFICATION: ALREADY_ABSENT
+- REASON: Cleaned up in previous phases.
+- RISK_IF_REMOVED: None.
+- ACTION_TAKEN: NONE
+
+## sitl_logs.txt
+- PATH: `sitl_logs.txt`
+- EXISTED_BEFORE_PHASE: NO
+- TRACKING_STATUS: MISSING
+- SIZE: N/A
+- REFERENCE_FOUND: NO
+- CLASSIFICATION: ALREADY_ABSENT
+- REASON: Cleaned up in previous phases.
+- RISK_IF_REMOVED: None.
+- ACTION_TAKEN: NONE
+
+## mission_logs.txt
+- PATH: `mission_logs.txt`
+- EXISTED_BEFORE_PHASE: NO
+- TRACKING_STATUS: MISSING
+- SIZE: N/A
+- REFERENCE_FOUND: NO
+- CLASSIFICATION: ALREADY_ABSENT
+- REASON: Cleaned up in previous phases.
+- RISK_IF_REMOVED: None.
+- ACTION_TAKEN: NONE
+
+## artifacts/logs/
+- PATH: `artifacts/logs/`
+- EXISTED_BEFORE_PHASE: YES
+- TRACKING_STATUS: IGNORED
+- SIZE: N/A
+- REFERENCE_FOUND: YES (as raw logs)
+- CLASSIFICATION: KEEP_LOCAL_IGNORED_UNTIL_FINAL_ACCEPTANCE
+- REASON: Raw logs may still be needed to verify evidence. Not to be committed to GitHub.
+- RISK_IF_REMOVED: Loss of raw engineering evidence.
+- ACTION_TAKEN: NONE
+
+## Final Assessment
+NO_DELETION_REQUIRED

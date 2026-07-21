@@ -1,84 +1,51 @@
-# ============================================
 # Python
-# ============================================
+.venv/
+venv/
+env/
 __pycache__/
 *.py[cod]
-*$py.class
-*.so
-.venv/
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.pyc
 
-# ============================================
-# ROS 2 Workspace
-# ============================================
+# ROS 2 / Colcon
 drone_landing_ws/build/
 drone_landing_ws/install/
 drone_landing_ws/log/
-
-# ============================================
-# C++ / Build Output
-# ============================================
-*.o
-*.obj
-*.exe
-*.dll
-*.dylib
 build/
+install/
+log/
 
-# ============================================
-# Image / Video Outputs and Debug Artifacts
-# ============================================
-*.png
-!drone_landing_ws/src/px4_vision_autonomy/models/aruco_landing_pad/*.png
-*.jpg
-*.jpeg
-debug_frame.png
-artifacts/
+# Docker and Runtime Artifacts
+artifacts/logs/
+artifacts/runtime/
+artifacts/tmp/
 
-# ============================================
-# Temporary and Log files
-# ============================================
-*.log
-*.ulg
-*.txt
-!requirements.txt
-
-# ============================================
-# Planning & Notes (not part of the project)
-# ============================================
-*plan*.md
-snapshot_report.md
-camera_gate_report.md
-examine_gpu_frame.md
-marker_view.md
-view_debug_image.md
-task.md
-
-# ============================================
-# OS generated files
-# ============================================
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# ============================================
-# IDEs and Editors
-# ============================================
-.vscode/
-.idea/
+# Temporary Files
+*.tmp
+*.bak
+*.orig
 *.swp
 *.swo
 *~
+core
+core.*
 
-# ============================================
-# Docker (runtime / caches)
-# ============================================
-docker/versions.env
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local Environment
+.env
+.env.*
+!.env.example
+*.local
+
+# Project-Specific Local Outputs
+dist/
+*.egg-info/
