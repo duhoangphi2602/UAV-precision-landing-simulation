@@ -5,6 +5,12 @@
 - **snapshot_report.md**: DELETED (old scratch report, no longer needed).
 - **NOPASSWD review**: SAFE_DOCUMENTATION_TEXT. Removed `NOPASSWD:ALL` instruction from `Dockerfile`.
 
+## DOCKER SECURITY CONFIRMATION:
+- **runtime user**: devuser
+- **UID**: 1000
+- **root?**: NO (chứng minh NOPASSWD đã bay)
+- **image build PASS/FAIL**: PASS
+
 ## STATIC:
 - **Bash**: PASS
 - **Python**: PASS

@@ -62,31 +62,27 @@ ARG USER_GID=$USER_UID
 
 RUN groupadd --gid $USER_GID $USERNAME \
     && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME \
-    && echo $USERNAME ALL=\(root\) NOPASSWD: ALL > /etc/sudoers.d/$USERNAME \
-    && chmod 0440 /etc/sudoers.d/$USERNAME \
     && usermod -aG dialout,video $USERNAME
 
 USER $USERNAME
 WORKDIR /home/$USERNAME
 
-# Clone and build PX4
-# Wait, downloading PX4 inside docker makes the image large, but it ensures we have it pre-built.
-# Or we can let it be a volume? The user says:
-# "Không commit toàn bộ PX4 source vào repository chính."
-# "PX4 có thể đặt tại: /opt/PX4-Autopilot"
+# Clone and setup PX4 as root
 USER root
-RUN mkdir -p /opt/PX4-Autopilot && chown -R $USERNAME:$USERNAME /opt/PX4-Autopilot
-USER $USERNAME
-
-# We will clone and build PX4
 ARG PX4_VERSION
-RUN echo "PX4_VERSION ARG: ${PX4_VERSION}" \
+RUN mkdir -p /opt/PX4-Autopilot \
+    && echo "PX4_VERSION ARG: ${PX4_VERSION}" \
     && git clone https://github.com/PX4/PX4-Autopilot.git /opt/PX4-Autopilot \
     && cd /opt/PX4-Autopilot \
     && git checkout ${PX4_VERSION} \
     && git submodule update --init --recursive \
     && bash ./Tools/setup/ubuntu.sh --no-nuttx --no-sim-tools \
-    && python3 -m pip install --user --no-cache-dir --force-reinstall "numpy==1.26.4" \
+    && chown -R $USERNAME:$USERNAME /opt/PX4-Autopilot
+
+USER $USERNAME
+WORKDIR /home/$USERNAME
+
+RUN python3 -m pip install --user --no-cache-dir --force-reinstall "numpy==1.26.4" \
     && python3 -c "import numpy; print('NumPy version:', numpy.__version__); print('NumPy path:', numpy.__file__); assert numpy.__version__ == '1.26.4'" \
     && python3 -c "import cv2; assert hasattr(cv2, 'aruco')" \
     && bash -c "source /opt/ros/humble/setup.bash && python3 -c 'from cv_bridge import CvBridge'"
