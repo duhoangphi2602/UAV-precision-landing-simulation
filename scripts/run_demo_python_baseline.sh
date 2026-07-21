@@ -99,7 +99,7 @@ echo "Polling mission status (max 300s)..."
 wait_time=0
 mission_done=false
 while [ $wait_time -lt 300 ]; do
-    if docker logs mission 2>&1 | grep -q -E "Landing detected|Failsafe|FAILSAFE|LAND|Completed|Landed"; then
+    if docker logs mission 2>&1 | grep -q -E "Mission Complete|FAILED|FAILSAFE|Landing timeout"; then
         echo "Mission terminal state reached!"
         mission_done=true
         break

@@ -292,12 +292,19 @@ class MissionCommander(Node):
                 except Exception as e:
                     self.get_logger().error(f"Landing failed: {e}")
                 
-                async for is_armed in self.drone.telemetry.armed():
-                    if not is_armed:
-                        self.get_logger().info("Disarmed. Mission Complete.")
-                        break
-                
-                self.state = STATE_DONE
+                try:
+                    async def wait_for_disarm():
+                        async for is_armed in self.drone.telemetry.armed():
+                            if not is_armed:
+                                return True
+                        return False
+                        
+                    await asyncio.wait_for(wait_for_disarm(), timeout=30.0)
+                    self.get_logger().info("Disarmed. Mission Complete.")
+                    self.state = STATE_DONE
+                except asyncio.TimeoutError:
+                    self.get_logger().error("Landing timeout: Drone did not disarm within 30 seconds.")
+                    self.state = "FAILED"
                 
             await asyncio.sleep(0.1)
 
