@@ -1,6 +1,7 @@
 #!/bin/bash
 set -Eeuo pipefail
 
+mkdir -p artifacts/logs
 cleanup() {
     echo "Cleaning up containers..."
     docker compose down --remove-orphans || true

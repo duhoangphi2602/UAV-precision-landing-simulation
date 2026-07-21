@@ -1,6 +1,7 @@
 #!/bin/bash
 set -Eeuo pipefail
 
+mkdir -p artifacts/logs
 ./scripts/allow_x11.sh
 
 echo "Starting C++ Control Demo..."
