@@ -41,33 +41,21 @@ artifacts/
 # ============================================
 # Temporary and Log files
 # ============================================
-tmp_upstream/
 *.log
 *.ulg
 *.txt
 !requirements.txt
 
 # ============================================
-# Debug / scratch files from development
-# ============================================
-old_inspection.sdf
-transpose_texture.py
-drone_landing_ws/transpose_texture.py
-
-# ============================================
 # Planning & Notes (not part of the project)
 # ============================================
-master_plan.md
-UPSTREAM_BASELINE.md
-implementation_plan.md
-walkthrough.md
+*plan*.md
 snapshot_report.md
 camera_gate_report.md
-task.md
 examine_gpu_frame.md
 marker_view.md
 view_debug_image.md
-*plan*.md
+task.md
 
 # ============================================
 # OS generated files
