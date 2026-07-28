@@ -18,7 +18,7 @@ sleep 2
 
 docker compose run -d --name aruco simulation bash -c "ros2 run px4_vision_autonomy aruco_detector --ros-args -p camera_topic:=/camera"
 docker compose run -d --name viewer simulation bash -c "ros2 run px4_vision_autonomy camera_viewer"
-docker compose run -d --name cpp_control simulation bash -c "ros2 launch precision_landing_control_cpp control_cpp.launch.py"
+docker compose run -d --name cpp_control simulation bash -c "ros2 launch precision_landing_control_cpp control_cpp.launch.py interface_mode:=typed"
 docker compose run -d --name mission simulation bash -c "ros2 run px4_vision_autonomy mission_commander --ros-args -p control_source:=external_cpp -p wp_north:=0.0 -p wp_east:=5.8 -p wp_down:=-3.0 -p flip_x:=true -p flip_y:=true"
 
 echo "Demo is running."
@@ -54,4 +54,4 @@ docker logs px4_sitl > artifacts/logs/demo_cpp_px4.log 2>&1 || true
 echo "=============================================="
 
 echo "Demo script finished."
-./scripts/stop_demo.sh
+#./scripts/stop_demo.sh
