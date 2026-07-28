@@ -8,6 +8,7 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(precision_landing_interfaces REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 
@@ -23,7 +24,7 @@ target_include_directories(pid_controller PUBLIC
 # Control Node
 add_executable(control_node src/control_node.cpp)
 target_link_libraries(control_node pid_controller)
-ament_target_dependencies(control_node rclcpp geometry_msgs std_msgs)
+ament_target_dependencies(control_node rclcpp geometry_msgs std_msgs precision_landing_interfaces)
 
 # Install
 install(TARGETS
