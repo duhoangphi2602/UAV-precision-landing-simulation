@@ -1,0 +1,17 @@
+precision_landing_control_node:
+  ros__parameters:
+    kp_x: 0.0015
+    ki_x: 0.00005
+    kd_x: 0.0
+    kp_y: 0.0015
+    ki_y: 0.00005
+    kd_y: 0.0
+    deadband: 0.0
+    output_min: -0.30
+    output_max: 0.30
+    integral_min: -2000.0
+    integral_max: 2000.0
+    stale_timeout: 1.0
+    swap_axes: false
+    flip_x: true
+    flip_y: true
