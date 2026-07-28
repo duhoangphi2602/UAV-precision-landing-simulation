@@ -2,7 +2,7 @@
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Image
-from precision_landing_interfaces.msg import TargetObservation, ControlCommand, MissionStatus
+from precision_landing_interfaces.msg import TargetObservation, ControlCommand, MissionStatus, MovingPlatformState
 import cv2
 import numpy as np
 import json
@@ -28,10 +28,18 @@ class CameraViewer(Node):
         self.obs_sub = self.create_subscription(TargetObservation, '/precision_landing/target_observation', self.obs_callback, 10)
         self.cmd_sub = self.create_subscription(ControlCommand, '/precision_landing/control_command', self.cmd_callback, 10)
         self.status_sub = self.create_subscription(MissionStatus, '/precision_landing/mission_status', self.status_callback, 10)
+        self.platform_sub = self.create_subscription(MovingPlatformState, '/precision_landing/platform_state', self.platform_callback, 10)
+
+        self.declare_parameter('mission_mode', 'fixed')
+        self.mission_mode = self.get_parameter('mission_mode').get_parameter_value().string_value
 
         self.obs = None
         self.cmd = None
         self.status = None
+        self.platform_state = None
+        self.platform_start_north_m = None
+        self.platform_start_time = None
+        self.platform_measured_speeds = []
 
         self.trajectory = []
 
@@ -70,7 +78,9 @@ class CameraViewer(Node):
             "stale_observation_count": 0,
             "fresh_frame_count": 0,
             "average_fresh_frame_fps": 0.0,
-            "ui_refresh_hz": 30.0
+            "ui_refresh_hz": 30.0,
+            "re_align_count": 0,
+            "platform_speed_command_mps": 0.0
         }
 
         self.terminal_time = None
@@ -93,6 +103,16 @@ class CameraViewer(Node):
         cv2.namedWindow("Drone Camera View")
         cv2.setMouseCallback("Drone Camera View", self.mouse_callback)
         self.get_logger().info('Dashboard Node Started')
+
+    def platform_callback(self, msg):
+        self.platform_state = msg
+        if self.mission_mode == 'moving':
+            if msg.moving and self.platform_start_time is None:
+                self.platform_start_time = time.perf_counter()
+                self.platform_start_north_m = msg.position_ned_m.x
+
+            if msg.moving:
+                self.platform_measured_speeds.append(abs(msg.velocity_ned_mps.x))
 
     def obs_callback(self, msg):
         self.obs = msg
@@ -191,6 +211,10 @@ class CameraViewer(Node):
             if msg.touchdown_error_valid:
                 self.metrics["touchdown_horizontal_error_m"] = msg.touchdown_horizontal_error_m
 
+            self.metrics["re_align_count"] = getattr(msg, "re_align_count", 0)
+            if self.platform_state:
+                self.metrics["platform_speed_command_mps"] = float(self.platform_state.commanded_speed_mps)
+
             self.metrics["disarmed"] = not msg.armed
             self.metrics["mission_complete"] = True
 
@@ -201,6 +225,35 @@ class CameraViewer(Node):
                     self.metrics["result"] = "PRECISION_FAIL"
             else:
                 self.metrics["result"] = "FAILED"
+
+            if self.mission_mode == 'moving' and self.platform_state:
+                motion_duration = 0.0
+                if self.platform_start_time:
+                    motion_duration = time.perf_counter() - self.platform_start_time
+                self.metrics["platform_motion_duration_sec"] = motion_duration
+                self.metrics["platform_start_north_m"] = self.platform_start_north_m
+                touchdown_north_m = self.platform_state.position_ned_m.x
+                self.metrics["platform_touchdown_north_m"] = touchdown_north_m
+
+                disp = 0.0
+                if self.platform_start_north_m is not None:
+                    disp = abs(touchdown_north_m - self.platform_start_north_m)
+                self.metrics["platform_displacement_m"] = disp
+
+                self.metrics["platform_commanded_speed_mps"] = self.platform_state.commanded_speed_mps
+                mean_speed = sum(self.platform_measured_speeds)/len(self.platform_measured_speeds) if self.platform_measured_speeds else 0.0
+                self.metrics["platform_measured_speed_mean_mps"] = mean_speed
+
+                exp_disp = 0.10 * motion_duration
+                self.metrics["platform_expected_displacement_m"] = exp_disp
+                ratio = disp / exp_disp if exp_disp > 0 else 0.0
+                self.metrics["platform_displacement_ratio"] = ratio
+
+                platform_pass = (motion_duration >= 5.0 and disp >= 0.50 and 0.08 <= mean_speed <= 0.12 and 0.80 <= ratio <= 1.20)
+                self.metrics["platform_motion_verified"] = platform_pass
+
+                if not platform_pass:
+                    self.metrics["result"] = "PLATFORM_MOTION_FAIL"
 
             self.metrics["mission_duration_sec"] = msg.elapsed_sec
 
@@ -301,8 +354,9 @@ class CameraViewer(Node):
             modes = ["FIXED", "MOVING", "GIMBAL"]
             bx = PAD
             for idx, mode in enumerate(modes):
-                color = (0, 255, 0) if idx == 0 else (100, 100, 100) # FIXED is active
-                txt_col = (0, 0, 0) if idx == 0 else (255, 255, 255)
+                is_active = (mode.lower() == self.mission_mode.lower())
+                color = (0, 255, 0) if is_active else (100, 100, 100)
+                txt_col = (0, 0, 0) if is_active else (255, 255, 255)
                 cv2.rectangle(panel, (bx, y_offset), (bx + btn_w, y_offset + btn_h), color, -1)
 
                 # Center text
@@ -317,6 +371,8 @@ class CameraViewer(Node):
             if self.status:
                 y_offset = draw_field("STATE", self.status.state, y_offset)
                 y_offset = draw_field("ELAPSED", f"{self.status.elapsed_sec:.1f}s", y_offset)
+                if hasattr(self.status, 're_align_count'):
+                    y_offset = draw_field("RE-ALIGN", str(self.status.re_align_count), y_offset)
 
             y_offset = draw_heading("CONTROL", y_offset)
             if self.cmd:
@@ -336,6 +392,16 @@ class CameraViewer(Node):
                 y_offset = draw_field("ERROR Y", f"{self.obs.error_y:.1f}", y_offset)
                 y_offset = draw_field("ERROR MAG", f"{self.obs.error_magnitude:.1f}", y_offset)
 
+            if self.mission_mode == 'moving':
+                y_offset = draw_heading("PLATFORM", y_offset)
+                if self.platform_state:
+                    y_offset = draw_field("STATE", "MOVING" if self.platform_state.moving else "STOPPED", y_offset)
+                    y_offset = draw_field("CMD", f"{self.platform_state.commanded_speed_mps:.2f} m/s", y_offset)
+                    y_offset = draw_field("ACTUAL SIM", f"{abs(self.platform_state.velocity_ned_mps.x):.2f} m/s", y_offset)
+                else:
+                    y_offset = draw_field("STATE", "WAITING", y_offset)
+
+            if self.obs:
                 if self.obs.valid:
                     # Update trajectory relative to the 960x720 resized image
                     # Original coordinates from obs are based on the original image (likely 1280x960 or 640x480)

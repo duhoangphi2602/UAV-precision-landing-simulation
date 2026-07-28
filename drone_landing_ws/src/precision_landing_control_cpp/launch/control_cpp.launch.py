@@ -15,15 +15,33 @@ def generate_launch_description():
         description='Interface mode: typed or legacy'
     )
 
-    control_node = Node(
-        package='precision_landing_control_cpp',
-        executable='control_node',
-        name='precision_landing_control_node',
-        parameters=[pid_config, {'interface_mode': LaunchConfiguration('interface_mode')}],
-        output='screen'
+    mission_mode_arg = DeclareLaunchArgument(
+        'mission_mode',
+        default_value='fixed',
+        description='Mission mode: fixed or moving'
     )
+
+    import launch.conditions
+    pid_moving_config = os.path.join(config_dir, 'pid_moving.yaml')
+
+    # We will just pass the params using Python substitution, but LaunchConfiguration doesn't directly do conditionals for parameter files well.
+    # We can just define the node using a OpaqueFunction or simpler:
+
+    def launch_setup(context, *args, **kwargs):
+        mission_mode = LaunchConfiguration('mission_mode').perform(context)
+        selected_pid_config = pid_moving_config if mission_mode == 'moving' else pid_config
+
+        control_node = Node(
+            package='precision_landing_control_cpp',
+            executable='control_node',
+            name='precision_landing_control_node',
+            parameters=[selected_pid_config, {'interface_mode': LaunchConfiguration('interface_mode')}],
+            output='screen'
+        )
+        return [control_node]
 
     return LaunchDescription([
         interface_mode_arg,
-        control_node
+        mission_mode_arg,
+        launch.actions.OpaqueFunction(function=launch_setup)
     ])

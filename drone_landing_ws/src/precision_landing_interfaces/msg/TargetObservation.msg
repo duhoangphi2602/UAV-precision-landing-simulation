@@ -20,5 +20,8 @@ float32 error_y
 float32 error_magnitude
 float32 confidence
 
+float32 marker_side_px
+float32 normalized_error
+
 bool pose_valid
 geometry_msgs/Point position_m

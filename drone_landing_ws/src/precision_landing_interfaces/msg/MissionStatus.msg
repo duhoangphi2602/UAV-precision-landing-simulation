@@ -27,3 +27,4 @@ string detail
 bool touchdown_detected
 bool touchdown_error_valid
 float32 touchdown_horizontal_error_m
+uint32 re_align_count

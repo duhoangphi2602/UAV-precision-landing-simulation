@@ -14,7 +14,8 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/TargetObservation.msg"
   "msg/ControlCommand.msg"
   "msg/MissionStatus.msg"
-  DEPENDENCIES std_msgs geometry_msgs
+  "msg/MovingPlatformState.msg"
+  DEPENDENCIES geometry_msgs std_msgs
 )
 
 ament_export_dependencies(rosidl_default_runtime)
