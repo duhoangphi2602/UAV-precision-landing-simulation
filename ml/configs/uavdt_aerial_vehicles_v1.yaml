@@ -1,0 +1,18 @@
+path: ml/datasets/raw/uavdt/aerial_vehicles_v1
+train: train/images
+val: valid/images
+test: test/images
+
+nc: 4
+names:
+  0: bus
+  1: car
+  2: truck
+  3: van
+
+roboflow:
+  workspace: uavdt
+  project: aerial-vehicles-hjarh
+  version: 1
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/uavdt/aerial-vehicles-hjarh/dataset/1

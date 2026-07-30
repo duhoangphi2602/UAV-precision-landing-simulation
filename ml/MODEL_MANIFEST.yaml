@@ -1,0 +1,40 @@
+# Baseline (Archived)
+baseline_v1:
+  model_name: "YOLOv8n UAVDT Baseline"
+  input_shape: [1, 3, 640, 640]
+  classes:
+    0: bus
+    1: car
+    2: truck
+    3: van
+  metrics:
+    mAP50: 0.501
+    mAP50-95: 0.335
+  artifacts:
+    onnx:
+      path: "ml/exports/yolov8n_uavdt_baseline_v1.onnx"
+      sha256: "af06d52479b9dade8ba4dc144010d87f99114271496700cc8907b4d041796866"
+    pt:
+      path: "ml/experiments/yolov8n_uavdt_baseline_v1/weights/best.pt"
+      sha256: "011521a2ada35e4d7270ca57e1c2560bf99e8f8b13a40c2dc7875a1e2fe2027d"
+
+# Selected Final Model (Slice 3B Winner)
+selected_model:
+  model_name: "YOLOv8n UAVDT Vehicle 960"
+  version: "v1"
+  input_shape: [1, 3, 960, 960]
+  classes:
+    0: vehicle
+  metrics:
+    mAP50: 0.877
+    mAP50-95: 0.609
+    recall: 0.792
+    precision: 0.901
+    inference_ms: 2.4
+  artifacts:
+    onnx:
+      path: "ml/exports/yolov8n_uavdt_vehicle_960_v1.onnx"
+      sha256: "ef39f723aa4dafbf7a5a31bed10bb76cba7430a77f5ab6dc24b4f12eccf48245"
+    pt:
+      path: "ml/experiments/yolov8n_uavdt_vehicle_960_v1/weights/best.pt"
+      sha256: "190cd1091adae5fbfde747ce3075e4c2038e66629de0328acb66d230d6f92f71"

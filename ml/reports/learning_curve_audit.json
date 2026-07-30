@@ -1,0 +1,20 @@
+{
+    "Candidate_A": {
+        "first_logged_epoch": 1,
+        "final_epoch": 100,
+        "best_epoch": 90,
+        "epoch_reach_0.80_mAP50": 1,
+        "epoch_reach_95pct_final_mAP50": 1,
+        "final_mAP50": 0.87619,
+        "final_mAP50_95": 0.6075
+    },
+    "Candidate_B": {
+        "first_logged_epoch": 1,
+        "final_epoch": 100,
+        "best_epoch": 82,
+        "epoch_reach_0.80_mAP50": 11,
+        "epoch_reach_95pct_final_mAP50": 20,
+        "final_mAP50": 0.87833,
+        "final_mAP50_95": 0.61461
+    }
+}
