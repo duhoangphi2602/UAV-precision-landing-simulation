@@ -49,3 +49,59 @@ Thumbs.db
 # Project-Specific Local Outputs
 dist/
 *.egg-info/
+
+# Python / environments (additional)
+**/.venv/
+**/venv/
+**/__pycache__/
+**/*.py[cod]
+
+# Dataset
+ml/datasets/**
+!ml/datasets/README.md
+!ml/datasets/.gitkeep
+
+# Training runs and models
+ml/experiments/**
+ml/exports/**
+ml/runs/**
+runs/**
+wandb/**
+**/*.pt
+**/*.pth
+**/*.onnx
+**/*.engine
+**/*.plan
+**/*.trt
+**/*.cache
+
+# Generated ML reports and plots
+ml/reports/**
+**/results.csv
+**/results.png
+**/confusion_matrix*.png
+**/PR_curve*.png
+**/P_curve*.png
+**/R_curve*.png
+**/F1_curve*.png
+**/labels.jpg
+**/val_batch*_labels.jpg
+**/val_batch*_pred.jpg
+**/events.out.tfevents*
+
+# Local model metadata
+ml/MODEL_MANIFEST.yaml
+ml/*MANIFEST.local.yaml
+
+# Slice 3 local evidence reports
+docs/evidence/SLICE_3_YOLO_ONNX_ACCEPTANCE.md
+docs/evidence/SLICE_3B_SMALL_OBJECT_OPTIMIZATION.md
+docs/evidence/SLICE_3C_PARETO_OPTIMIZATION.md
+
+# Archives and temporary files
+**/*.zip
+**/*.tar
+**/*.tar.gz
+**/*.7z
+*.log
+*.tmp
