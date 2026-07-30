@@ -1,0 +1,18 @@
+{
+    "OS": "Linux 7.0.0-28-generic",
+    "Python": "3.14.4",
+    "PyTorch": "2.13.0+cu130",
+    "CUDA_available": true,
+    "PyTorch_CUDA_version": "13.0",
+    "cuDNN": 92000,
+    "GPU_name": "NVIDIA GeForce RTX 3060",
+    "GPU_VRAM_GB": 12.49,
+    "Ultralytics": "8.4.108",
+    "OpenCV": "5.0.0",
+    "ONNX": "1.22.0",
+    "ONNX_Runtime": "1.28.0",
+    "ONNX_Runtime_providers": [
+        "AzureExecutionProvider",
+        "CPUExecutionProvider"
+    ]
+}

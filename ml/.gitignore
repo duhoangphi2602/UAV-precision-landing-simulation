@@ -1,0 +1,24 @@
+# Python virtual env
+.venv/
+
+# Datasets
+datasets/raw/
+datasets/processed/
+*.zip
+
+# Training runs
+experiments/
+runs/
+
+# Model weights
+*.pt
+*.onnx
+*.engine
+exports/
+
+# Caches and logs
+calibration_cache/
+*.events.out.tfevents.*
+
+# Evaluation reports
+reports/
