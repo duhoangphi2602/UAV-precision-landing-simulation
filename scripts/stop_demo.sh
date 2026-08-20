@@ -1,12 +1,13 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -Eeuo pipefail
 
-echo "Stopping previous simulation containers..."
-docker compose down -v || true
-docker rm -f px4_sitl ros_bridge aruco viewer mission cpp_control platform_controller cpp_shadow shadow_logger || true
+readonly CONTAINERS=(
+    px4_sitl ros_bridge aruco viewer mission cpp_control platform_controller
+    gesture_px4_sitl gesture_ros_bridge gesture_viewer gesture_mission gesture_operator
+    final_px4_sitl final_ros_bridge final_platform_controller final_aruco
+    final_viewer final_cpp_control final_mission final_gesture_operator
+)
 
-echo "Killing any orphaned background tasks..."
-pkill -f px4 || true
-pkill -f gz || true
-pkill -f ros2 || true
-pkill -f mission_commander || true
+echo "Stopping only known project demo containers..."
+docker rm -f "${CONTAINERS[@]}" >/dev/null 2>&1 || true
+echo "DEMO_CONTAINERS_STOPPED=YES"

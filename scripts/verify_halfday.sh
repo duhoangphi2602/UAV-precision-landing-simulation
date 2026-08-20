@@ -1,11 +1,27 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -Eeuo pipefail
 
-echo "Running tests..."
-# Run Python mock tests
-docker compose run --rm simulation bash -c "pytest /home/devuser/tests/test_aruco.py"
+if [ ! -x gesture/.venv/bin/python ]; then
+    echo "Gesture environment is missing; run 'make setup-gesture' first." >&2
+    exit 1
+fi
 
-# Run C++ GTests
-docker compose run --rm simulation bash -c "cd /home/devuser/drone_landing_ws && colcon test --packages-select precision_landing_control_cpp && colcon test-result --verbose"
+./scripts/verify_gesture_assets.sh
 
-echo "Unit test verification complete"
+echo "Running gesture unit and deployment tests..."
+gesture/.venv/bin/python -m pytest gesture/tests -q
+
+echo "Building and testing the ROS 2 packages..."
+docker compose run --rm --no-deps simulation bash -c \
+    "cd /home/devuser/drone_landing_ws && \
+     colcon build --symlink-install --packages-select \
+       precision_landing_interfaces precision_landing_control_cpp px4_vision_autonomy && \
+     colcon test --packages-select \
+       precision_landing_interfaces precision_landing_control_cpp px4_vision_autonomy && \
+     colcon test-result --verbose"
+
+echo "Running the independent ArUco contract tests..."
+docker compose run --rm --no-deps simulation \
+    python3 -m pytest /home/devuser/tests/test_aruco.py -q
+
+echo "TESTS=PASS"

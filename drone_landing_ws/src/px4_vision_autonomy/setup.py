@@ -28,8 +28,8 @@ setup(
     data_files=data_files,
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='User',
-    maintainer_email='user@example.com',
+    maintainer='Hoang Phi',
+    maintainer_email='duhoangphi2617@gmail.com',
     description='A ROS2 Humble package for PX4 offboard control with computer vision',
     license='MIT',
     tests_require=['pytest'],
@@ -39,7 +39,6 @@ setup(
             'aruco_detector = px4_vision_autonomy.nodes.aruco_detector:main',
             'mission_commander = px4_vision_autonomy.nodes.mission_commander:main',
             'moving_platform_controller = px4_vision_autonomy.nodes.moving_platform_controller:main',
-            'shadow_logger = px4_vision_autonomy.nodes.shadow_logger:main',
         ],
     },
 )

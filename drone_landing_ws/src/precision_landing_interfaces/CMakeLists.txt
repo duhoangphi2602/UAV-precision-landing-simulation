@@ -15,6 +15,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/ControlCommand.msg"
   "msg/MissionStatus.msg"
   "msg/MovingPlatformState.msg"
+  "msg/OperatorCommand.msg"
   DEPENDENCIES geometry_msgs std_msgs
 )
 

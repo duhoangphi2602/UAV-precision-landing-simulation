@@ -1,0 +1,49 @@
+{
+  "class_order": [
+    "TAKEOFF",
+    "FORWARD",
+    "BACKWARD",
+    "LEFT",
+    "RIGHT",
+    "HOLD",
+    "AUTO_LAND"
+  ],
+  "model": {
+    "architecture": "63-128-64-7",
+    "input_dtype": "float32",
+    "input_name": "features",
+    "input_shape": [
+      "N",
+      63
+    ],
+    "output_dtype": "float32",
+    "output_name": "logits",
+    "output_shape": [
+      "N",
+      7
+    ],
+    "parameters": 16903
+  },
+  "preprocessing_metadata": "preprocessing.json",
+  "preprocessing_version": "wrist-palm-canonical-v1",
+  "schema_version": "gesture_mlp_deployment_v1",
+  "thumb_veto": {
+    "applies_only_when_predicted_class": "AUTO_LAND",
+    "automatic_relabel": false,
+    "calibration_scope": "PRODUCTION_ALL_DATA_NOT_GENERALIZATION_EVIDENCE",
+    "formula": "(||L4-L2|| / (||L3-L2|| + ||L4-L3||)) * ||L4-mean(L0,L5,L9,L13,L17)||",
+    "minimum_auto_land_retention": 0.98,
+    "production_thumb_veto_threshold": 0.753987084604339,
+    "rejected_status": "REJECTED_BY_THUMB_VETO",
+    "threshold_evidence": {
+      "fit_scope": "PRODUCTION_ALL_DATA_NOT_GENERALIZATION_EVIDENCE",
+      "observed_allowed_samples": 392,
+      "observed_retention": 0.98,
+      "policy": "HIGHEST_TRAIN_AUTO_LAND_ORDER_STATISTIC_RETAINING_AT_LEAST_THE_CONFIGURED_FRACTION",
+      "required_allowed_samples": 392,
+      "train_auto_land_samples": 400,
+      "value": 0.753987084604339
+    },
+    "threshold_policy": "HIGHEST_ORDER_STATISTIC_RETAINING_AT_LEAST_98_PERCENT"
+  }
+}

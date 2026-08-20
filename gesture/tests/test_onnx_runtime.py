@@ -7,7 +7,12 @@ from pathlib import Path
 
 import numpy as np
 
-from gesture.onnx_runtime import NO_COMMAND, no_hand_prediction, softmax
+from gesture.onnx_runtime import (
+    GestureOnnxRuntime,
+    NO_COMMAND,
+    no_hand_prediction,
+    softmax,
+)
 
 
 def test_runtime_module_import_does_not_import_pytorch():
@@ -44,3 +49,12 @@ def test_ort_gate_config_requires_all_data_and_stable_benchmark():
     assert config["benchmark"]["batch_size"] == 1
     assert config["benchmark"]["warmup_iterations"] >= 100
     assert config["benchmark"]["measured_iterations"] >= 1000
+
+
+def test_tracked_release_bundle_loads_without_pytorch():
+    runtime = GestureOnnxRuntime(Path("gesture/configs/onnx_runtime_v1.json"))
+    contract = runtime.contract()
+    assert contract["provider"] == ["CPUExecutionProvider"]
+    assert contract["input"]["shape"][1:] == [63]
+    assert contract["output"]["shape"][1:] == [7]
+    assert contract["pytorch_required"] is False

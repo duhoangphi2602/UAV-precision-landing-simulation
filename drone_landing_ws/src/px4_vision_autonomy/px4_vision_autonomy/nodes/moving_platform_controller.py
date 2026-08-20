@@ -57,8 +57,20 @@ class MovingPlatformController(Node):
     def status_callback(self, msg):
         self.last_status = msg
         # Latch logic
-        # if mode == MOVING and state == SCAN, start moving.
-        if msg.mode == MissionStatus.MODE_MOVING and msg.state == MissionStatus.STATE_SCAN:
+        # Accepted moving mode starts at SCAN. Final mode starts during manual
+        # flight so the operator acquires a physically moving target before
+        # explicitly authorizing autonomous landing.
+        start_moving = (
+            msg.mode == MissionStatus.MODE_MOVING
+            and msg.state == MissionStatus.STATE_SCAN
+        ) or (
+            msg.mode == MissionStatus.MODE_FINAL
+            and msg.state in [
+                MissionStatus.STATE_MANUAL_GESTURE_FLIGHT,
+                MissionStatus.STATE_TARGET_AVAILABLE,
+            ]
+        )
+        if start_moving:
             if not self.movement_started:
                 self.get_logger().info('PLATFORM_LATCH_STARTED')
             self.movement_started = True

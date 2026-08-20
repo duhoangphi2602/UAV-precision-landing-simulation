@@ -1,30 +1,34 @@
 # Third-Party Notices
 
-## px4_vision_autonomy
+This project uses open-source software and model assets under their respective
+licenses. Installing or running the project does not change those upstream
+terms.
 
-- Upstream project: px4_vision_autonomy
-- Upstream source: https://github.com/Tinny-Robot/px4_vision_autonomy.git
+## px4_vision_autonomy-derived package
+
+- Upstream: <https://github.com/Tinny-Robot/px4_vision_autonomy>
+- Pinned source revision used for the original import:
+  `62e5b6222043c90a49ed3aca58f039c8980528e1`
 - License: MIT
 - Local derived package: `drone_landing_ws/src/px4_vision_autonomy`
 
-Parts of this repository are derived from and modified from the upstream px4_vision_autonomy project.
+The upstream MIT notice remains in
+`drone_landing_ws/src/px4_vision_autonomy/LICENSE`.
 
-Copyright (c) 2023 User
+## MediaPipe Hand Landmarker
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+The repository does not redistribute `hand_landmarker.task`. The maintained
+download helper retrieves the versioned Google-hosted asset:
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+<https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task>
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+Expected SHA-256:
+`fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1`.
+The asset and MediaPipe runtime remain subject to Google's upstream terms.
+
+## Runtime platforms and libraries
+
+PX4 Autopilot, ROS 2, Gazebo Harmonic, MAVSDK, OpenCV, MediaPipe, PyTorch,
+ONNX, ONNX Runtime and their transitive dependencies retain their own
+copyright and license terms. Refer to their upstream distributions for the
+complete notices shipped with each installed version.
