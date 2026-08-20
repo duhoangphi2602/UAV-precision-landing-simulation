@@ -24,6 +24,149 @@ Run it in the portable CPU mode with `make demo-final` (the same as
 `make demo-final-cpu`). Machines with a configured NVIDIA Container Toolkit
 may use `make demo-final-gpu`.
 
+## Run on your laptop now
+
+The following is the complete first-time setup. Run each block from a normal
+terminal; host ROS 2, Gazebo and PX4 installations are not required.
+
+### 1. Clone
+
+```bash
+git clone https://github.com/duhoangphi2602/UAV-precision-landing-simulation.git
+cd UAV-precision-landing-simulation
+```
+
+### 2. Check the host prerequisites
+
+Docker Engine must be running and the current user must be able to use it
+without `sudo`. An X11/XWayland display and a webcam are required for the
+interactive demo.
+
+```bash
+docker info
+docker compose version
+echo "$DISPLAY"
+ls -l /dev/video*
+```
+
+Install `git`, `make`, `curl`, `python3.10` and `python3.10-venv` if those
+commands are absent. To use the GPU path, also install a compatible NVIDIA
+driver and NVIDIA Container Toolkit; `nvidia-smi` must work on the host.
+
+### 3. Build the simulation image at the pinned PX4 revision
+
+This is the explicit reproducible build command used by this release:
+
+```bash
+PX4_VERSION=78a44ed439ee941acd4844ff8ceaedbfe0faea56 \
+docker compose build --progress=plain simulation
+```
+
+Then build the ROS 2 workspace inside that image:
+
+```bash
+docker compose run --rm --no-deps simulation bash -lc \
+  'cd /home/devuser/drone_landing_ws && colcon build --symlink-install'
+```
+
+The equivalent project helper is `make build`. It reads the same pinned
+revision from `docker/versions.env`, builds the image and then builds the ROS
+workspace. Use either the two explicit commands above or `make build`; there
+is no need to run both.
+
+### 4. Create the gesture environment
+
+The transparent manual setup is:
+
+```bash
+python3.10 -m venv gesture/.venv
+gesture/.venv/bin/python -m pip install --upgrade pip
+gesture/.venv/bin/pip install \
+  --extra-index-url https://download.pytorch.org/whl/cpu \
+  -r gesture/requirements.lock.txt
+```
+
+This environment is deliberately CPU-only; Gazebo rendering may still use an
+NVIDIA GPU independently.
+
+Alternatively, if [`uv`](https://docs.astral.sh/uv/) is installed, one command
+performs the same pinned setup:
+
+```bash
+make setup-gesture
+```
+
+### 5. Download and verify the MediaPipe Hand Landmarker
+
+Skip this manual block if `make setup-gesture` was used, because that helper
+already downloads and verifies the exact same file.
+
+```bash
+mkdir -p gesture/models
+
+curl --fail --location --retry 3 \
+  --output gesture/models/hand_landmarker.task \
+  https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task
+
+sha256sum gesture/models/hand_landmarker.task
+printf '%s  %s\n' \
+  fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1 \
+  gesture/models/hand_landmarker.task | sha256sum --check
+```
+
+The final line must report `gesture/models/hand_landmarker.task: OK`.
+
+### 6. Verify assets and tests
+
+The deployable ONNX model and its JSON metadata are already tracked in the
+repository. Verify them together with the downloaded MediaPipe model, then run
+the bounded project test gate:
+
+```bash
+make verify-assets
+make test
+```
+
+### 7. Start the final demo
+
+On a laptop with NVIDIA Container Toolkit configured:
+
+```bash
+make demo-final-gpu
+```
+
+On any supported laptop, use the portable CPU/software-rendered path:
+
+```bash
+make demo-final-cpu
+```
+
+`make demo-final` is an alias for the CPU path. For a webcam other than
+`/dev/video0`, set its numeric index, for example:
+
+```bash
+GESTURE_CAMERA_INDEX=1 make demo-final-gpu
+```
+
+Three windows should appear: Gazebo, **Drone Camera View**, and
+**Final Gesture Operator**. Hold the `TAKEOFF` pose, guide the UAV until the
+dashboard shows `TARGET READY`, then hold `AUTO_LAND`. The successful terminal
+state is `FINAL_DEMO=PASS`.
+
+### Already configured laptop
+
+On later runs, only enter the repository, verify the assets and start the
+appropriate runtime:
+
+```bash
+cd ~/Projects/UAV-precision-landing-simulation
+make verify-assets
+make demo-final-gpu
+```
+
+Replace the last command with `make demo-final-cpu` when NVIDIA container
+acceleration is unavailable.
+
 ## Features
 
 ### Simulation and runtime
@@ -163,8 +306,8 @@ leakage prevention, safety calibration and deployment details.
 - Linux with X11 display support (the reference host used Ubuntu 26.04);
 - Docker Engine and the Docker Compose plugin;
 - an available webcam such as `/dev/video0`;
-- `curl`, `sha256sum`, `make` and
-  [uv](https://docs.astral.sh/uv/) for the Python 3.10 environment;
+- `curl`, `sha256sum`, `make`, Python 3.10 and its `venv` module;
+- optionally [uv](https://docs.astral.sh/uv/) for the automated gesture setup;
 - enough resources for PX4/Gazebo and the Docker build (16 GB RAM and 30 GB
   free disk are practical recommendations).
 
@@ -184,67 +327,14 @@ Install a compatible NVIDIA driver and NVIDIA Container Toolkit, then use the
 `-gpu` Make target. `docker-compose.gpu.yml` is an override; it is never
 loaded by CPU commands.
 
-## From zero: quick start
+## Setup guarantees
 
-1. Clone and enter the repository.
-
-   ```bash
-   git clone https://github.com/duhoangphi2602/UAV-precision-landing-simulation.git
-   cd UAV-precision-landing-simulation
-   ```
-
-2. Install Docker Engine, the Compose plugin, `make`, `curl` and `uv`.
-   Start Docker and ensure your user can access it:
-
-   ```bash
-   docker info
-   docker compose version
-   uv --version
-   ```
-
-3. Build the simulation image and ROS workspace. The build uses the pinned PX4
-   revision from `docker/versions.env`.
-
-   ```bash
-   make build
-   ```
-
-4. Create the dedicated Python 3.10 environment and download the versioned
-   MediaPipe model. The helper verifies SHA-256 before installation.
-
-   ```bash
-   make setup-gesture
-   ```
-
-5. Verify the tracked ONNX classifier, metadata and downloaded Hand Landmarker.
-
-   ```bash
-   make verify-assets
-   ```
-
-6. Run the complete source/unit/ROS test gate.
-
-   ```bash
-   make test
-   ```
-
-7. Run the final foreground demo.
-
-   CPU/software rendering:
-
-   ```bash
-   make demo-final-cpu
-   ```
-
-   Optional NVIDIA rendering:
-
-   ```bash
-   make demo-final-gpu
-   ```
-
-`make demo-final` is the portable CPU alias. The final ONNX classifier and
-its preprocessing/class mapping/veto metadata are included in the clone.
-Only the third-party MediaPipe task is downloaded during setup.
+The complete first-install sequence is in
+[Run on your laptop now](#run-on-your-laptop-now). The final ONNX classifier
+and its preprocessing, class mapping and veto metadata are included in the
+clone. Only the third-party MediaPipe task is downloaded during gesture setup.
+The PX4 source is resolved inside the Docker build at the immutable commit
+shown in the explicit build command.
 
 ## Running individual demos
 
