@@ -1,6 +1,28 @@
 import cv2
 import numpy as np
-import pytest
+
+
+def create_marker(aruco_dict, marker_id, size):
+    if hasattr(cv2.aruco, 'generateImageMarker'):
+        return cv2.aruco.generateImageMarker(aruco_dict, marker_id, size)
+
+    marker = np.zeros((size, size), dtype=np.uint8)
+    cv2.aruco.drawMarker(aruco_dict, marker_id, size, marker, 1)
+    return marker
+
+
+def create_detector_parameters():
+    if hasattr(cv2.aruco, 'DetectorParameters_create'):
+        return cv2.aruco.DetectorParameters_create()
+    return cv2.aruco.DetectorParameters()
+
+
+def detect_markers(image, aruco_dict, aruco_params):
+    if hasattr(cv2.aruco, 'ArucoDetector'):
+        detector = cv2.aruco.ArucoDetector(aruco_dict, aruco_params)
+        return detector.detectMarkers(image)
+    return cv2.aruco.detectMarkers(image, aruco_dict, parameters=aruco_params)
+
 
 def generate_synthetic_image(marker_id, x_offset, y_offset):
     # Create a white image 640x480
@@ -9,7 +31,7 @@ def generate_synthetic_image(marker_id, x_offset, y_offset):
     if marker_id is not None:
         aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
         # 4x4 marker, 100x100 pixels
-        marker_img = cv2.aruco.generateImageMarker(aruco_dict, marker_id, 100)
+        marker_img = create_marker(aruco_dict, marker_id, 100)
         # Convert to 3 channels
         marker_img = cv2.cvtColor(marker_img, cv2.COLOR_GRAY2BGR)
         
@@ -29,12 +51,8 @@ def generate_synthetic_image(marker_id, x_offset, y_offset):
 def test_centered_marker():
     img = generate_synthetic_image(0, 0, 0)
     aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
-    aruco_params = cv2.aruco.DetectorParameters()
-    if hasattr(cv2.aruco, 'ArucoDetector'):
-        detector = cv2.aruco.ArucoDetector(aruco_dict, aruco_params)
-        corners, ids, rejected = detector.detectMarkers(img)
-    else:
-        corners, ids, rejected = cv2.aruco.detectMarkers(img, aruco_dict, parameters=aruco_params)
+    aruco_params = create_detector_parameters()
+    corners, ids, _ = detect_markers(img, aruco_dict, aruco_params)
         
     assert ids is not None
     assert ids[0][0] == 0
@@ -50,12 +68,8 @@ def test_centered_marker():
 def test_left_marker():
     img = generate_synthetic_image(0, -100, 0)
     aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
-    aruco_params = cv2.aruco.DetectorParameters()
-    if hasattr(cv2.aruco, 'ArucoDetector'):
-        detector = cv2.aruco.ArucoDetector(aruco_dict, aruco_params)
-        corners, ids, rejected = detector.detectMarkers(img)
-    else:
-        corners, ids, rejected = cv2.aruco.detectMarkers(img, aruco_dict, parameters=aruco_params)
+    aruco_params = create_detector_parameters()
+    corners, _, _ = detect_markers(img, aruco_dict, aruco_params)
         
     c = corners[0][0]
     mx = sum([pt[0] for pt in c]) / 4
@@ -66,12 +80,8 @@ def test_left_marker():
 def test_right_marker():
     img = generate_synthetic_image(0, 100, 0)
     aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
-    aruco_params = cv2.aruco.DetectorParameters()
-    if hasattr(cv2.aruco, 'ArucoDetector'):
-        detector = cv2.aruco.ArucoDetector(aruco_dict, aruco_params)
-        corners, ids, rejected = detector.detectMarkers(img)
-    else:
-        corners, ids, rejected = cv2.aruco.detectMarkers(img, aruco_dict, parameters=aruco_params)
+    aruco_params = create_detector_parameters()
+    corners, _, _ = detect_markers(img, aruco_dict, aruco_params)
         
     c = corners[0][0]
     mx = sum([pt[0] for pt in c]) / 4
@@ -80,28 +90,20 @@ def test_right_marker():
     assert dx < 0
 
 def test_wrong_marker():
-    img = generate_synthetic_image(1, 0, 0) # wrong ID
+    img = generate_synthetic_image(1, 0, 0)  # wrong ID
     aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
-    aruco_params = cv2.aruco.DetectorParameters()
-    if hasattr(cv2.aruco, 'ArucoDetector'):
-        detector = cv2.aruco.ArucoDetector(aruco_dict, aruco_params)
-        corners, ids, rejected = detector.detectMarkers(img)
-    else:
-        corners, ids, rejected = cv2.aruco.detectMarkers(img, aruco_dict, parameters=aruco_params)
+    aruco_params = create_detector_parameters()
+    _, ids, _ = detect_markers(img, aruco_dict, aruco_params)
         
     assert ids is not None
-    # Node logic checks for target_marker_id == 0, here it's 1. 
+    # Node logic checks for target_marker_id == 0, here it's 1.
     # In the actual node, it rejects. In the test, we verify we got ID=1.
     assert ids[0][0] == 1
 
 def test_no_marker():
     img = generate_synthetic_image(None, 0, 0)
     aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
-    aruco_params = cv2.aruco.DetectorParameters()
-    if hasattr(cv2.aruco, 'ArucoDetector'):
-        detector = cv2.aruco.ArucoDetector(aruco_dict, aruco_params)
-        corners, ids, rejected = detector.detectMarkers(img)
-    else:
-        corners, ids, rejected = cv2.aruco.detectMarkers(img, aruco_dict, parameters=aruco_params)
+    aruco_params = create_detector_parameters()
+    _, ids, _ = detect_markers(img, aruco_dict, aruco_params)
         
     assert ids is None

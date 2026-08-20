@@ -458,8 +458,21 @@ class MissionCommander(Node):
                 detected_source = None
 
                 if not getattr(self, 'touchdown_latched', False):
+                    # The fixed world has no platform contact sensor, and PX4 can
+                    # continue reporting IN_AIR while Offboard commands a gentle
+                    # descent against the pad. Restore the fixed-demo touchdown
+                    # boundary that existed before the moving-platform slice.
+                    if self.mission_mode != 'moving' and current_alt <= 0.05:
+                        self.fixed_touchdown_debounce_count = getattr(
+                            self, 'fixed_touchdown_debounce_count', 0) + 1
+                        if self.fixed_touchdown_debounce_count >= 2:
+                            is_touchdown = True
+                            detected_source = "fixed_altitude"
+                    else:
+                        self.fixed_touchdown_debounce_count = 0
+
                     # Debounce logic for gazebo contact
-                    if self.gazebo_contact_active:
+                    if not is_touchdown and self.gazebo_contact_active:
                         if not hasattr(self, 'gz_contact_start'):
                             self.gz_contact_start = time.time()
                         else:
@@ -471,7 +484,7 @@ class MissionCommander(Node):
                             del self.gz_contact_start
 
                     # MAVSDK check
-                    if not is_in_air or "ON_GROUND" in ls_str or "LANDED" in ls_str:
+                    if not is_touchdown and (not is_in_air or "ON_GROUND" in ls_str or "LANDED" in ls_str):
                         if not hasattr(self, 'touchdown_debounce_count'):
                             self.touchdown_debounce_count = 1
                         else:
@@ -492,7 +505,7 @@ class MissionCommander(Node):
                     self.mission_metrics["touchdown_detection_source"] = detected_source
                     if detected_source == "gazebo_contact":
                         self.mission_metrics["contact_debounce_sec"] = time.time() - self.gz_contact_start
-                    self.get_logger().info(f"MOVING_TOUCHDOWN_LATCHED via {detected_source}")
+                    self.get_logger().info(f"TOUCHDOWN_LATCHED via {detected_source}")
                     self.touchdown_detected = True
 
                 if getattr(self, 'touchdown_latched', False):
@@ -601,9 +614,11 @@ class MissionCommander(Node):
 
                 if not is_low_alt:
                     # HIGH-ALTITUDE SAFETY (or FIXED mode logic)
+                    fixed_final_approach = self.mission_mode != 'moving' and current_alt < 0.3
+
                     if self.new_observation_desc:
                         self.new_observation_desc = False
-                        if self.mission_mode != 'moving' and current_alt < 0.3:
+                        if fixed_final_approach:
                             if err_mag > 25.0:
                                 self.consecutive_high_error += 1
                                 self.consecutive_low_error = 0
@@ -616,14 +631,20 @@ class MissionCommander(Node):
                             else:
                                 self.consecutive_high_error = 0
 
-                    if is_stale or (not hasattr(self, 'current_obs') or not self.current_obs.valid):
+                    observation_invalid = (
+                        is_stale or
+                        not hasattr(self, 'current_obs') or
+                        not self.current_obs.valid
+                    )
+
+                    if observation_invalid and not fixed_final_approach:
                         self.get_logger().warn("Marker lost/stale during high-altitude descent! Re-aligning.")
                         await self.drone.offboard.set_velocity_body(VelocityBodyYawspeed(0.0, 0.0, 0.0, 0.0))
                         await asyncio.sleep(2)
                         self.state = STATE_ALIGN
                         continue
 
-                    if self.consecutive_high_error >= 2:
+                    if self.consecutive_high_error >= 2 and not fixed_final_approach:
                         self.get_logger().warn(f"High error detected ({err_mag:.1f}px > threshold). Re-aligning.")
                         self.consecutive_high_error = 0
                         self.consecutive_low_error = 0
@@ -633,7 +654,7 @@ class MissionCommander(Node):
                         continue
 
                     # Final Commit Logic for FIXED mode
-                    if self.mission_mode != 'moving' and current_alt < 0.3:
+                    if fixed_final_approach:
                         if not getattr(self, 'final_approach_active', False):
                             self.get_logger().info("Entering Guided Final Approach.")
                             self.final_approach_active = True
@@ -652,7 +673,7 @@ class MissionCommander(Node):
                             continue
 
                         vel_z = 0.1
-                        if is_stale:
+                        if observation_invalid:
                             vel_x, vel_y = 0.0, 0.0
                 else:
                     # SCALE-AWARE LOW-ALTITUDE POLICY (MOVING ONLY)
@@ -732,8 +753,18 @@ class MissionCommander(Node):
                 self.get_logger().info("LANDING SEQUENCE. Stopping Offboard if running, and waiting for disarm...")
                 try:
                     await self.drone.offboard.set_velocity_body(VelocityBodyYawspeed(0.0, 0.0, 0.0, 0.0))
+                    if self.mission_mode != 'moving':
+                        # Keep the historical fixed-demo zero setpoint briefly so
+                        # the vehicle remains settled before leaving Offboard.
+                        await asyncio.sleep(2.0)
                     await self.drone.offboard.stop()
                 except: pass
+
+                if self.mission_mode != 'moving':
+                    try:
+                        await self.drone.action.land()
+                    except Exception as e:
+                        self.get_logger().error(f"action.land() failed: {e}")
 
                 if self.mission_mode == 'moving':
                     tmsg = Twist()
@@ -755,9 +786,27 @@ class MissionCommander(Node):
                     self.get_logger().warn("Auto-disarm timeout. Requesting manual disarm.")
                     try:
                         await self.drone.action.disarm()
-                        await asyncio.sleep(1.0)
                     except Exception as e:
                         self.get_logger().error(f"Manual disarm failed: {e}")
+
+                    start_wait = time.time()
+                    while time.time() - start_wait < 5.0:
+                        is_armed = True
+                        async for armed in self.drone.telemetry.armed():
+                            is_armed = armed
+                            break
+                        if not is_armed:
+                            disarmed = True
+                            break
+                        await asyncio.sleep(0.5)
+
+                if not disarmed:
+                    self.mission_metrics["result"] = "DISARM_FAILED"
+                    self.mission_metrics["disarmed"] = False
+                    self.mission_metrics["mission_complete"] = False
+                    self.get_logger().error("MISSION_FAILED: PX4 remained armed after landing and disarm timeouts.")
+                    self.state = "FAILED"
+                    break
 
                 self.mission_metrics["disarmed"] = True
                 self.get_logger().info("Disarmed. Mission Complete.")

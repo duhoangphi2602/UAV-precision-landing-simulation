@@ -93,7 +93,7 @@ ml/reports/**
 ml/MODEL_MANIFEST.yaml
 ml/*MANIFEST.local.yaml
 
-# Slice 3 local evidence reports
+# Local generated evidence reports; maintained documentation remains trackable
 docs/evidence/SLICE_3_YOLO_ONNX_ACCEPTANCE.md
 docs/evidence/SLICE_3B_SMALL_OBJECT_OPTIMIZATION.md
 docs/evidence/SLICE_3C_PARETO_OPTIMIZATION.md
@@ -105,3 +105,6 @@ docs/evidence/SLICE_3C_PARETO_OPTIMIZATION.md
 **/*.7z
 *.log
 *.tmp
+
+# Artifacts
+artifacts

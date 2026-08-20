@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import rclpy
 from rclpy.node import Node
+from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import Image
 from geometry_msgs.msg import Point, PoseStamped
 from std_msgs.msg import String
@@ -48,7 +49,8 @@ class ArucoDetector(Node):
         self.obs_pub = self.create_publisher(TargetObservation, '/precision_landing/target_observation', 10)
         self.debug_image_pub = self.create_publisher(Image, '/aruco/debug_image', 10)
 
-        self.subscription = self.create_subscription(Image, self.camera_topic, self.image_callback, 10)
+        self.subscription = self.create_subscription(
+            Image, self.camera_topic, self.image_callback, qos_profile_sensor_data)
         self.status_sub = self.create_subscription(String, '/mission/status', self.status_callback, 10)
 
         self.sequence_id = 0
@@ -194,9 +196,13 @@ class ArucoDetector(Node):
 
             self.obs_pub.publish(obs_msg)
 
-            debug_msg = cv2_to_imgmsg(cv_image, "bgr8")
-            debug_msg.header = msg.header
-            self.debug_image_pub.publish(debug_msg)
+            # The dashboard consumes the raw camera stream directly. Avoid a
+            # full 1280x960 Python bytes copy on every perception callback unless
+            # an explicit debug-image consumer is attached.
+            if self.debug_image_pub.get_subscription_count() > 0:
+                debug_msg = cv2_to_imgmsg(cv_image, "bgr8")
+                debug_msg.header = msg.header
+                self.debug_image_pub.publish(debug_msg)
 
         except Exception as e:
             self.get_logger().error(f'Error in image_callback: {e}')

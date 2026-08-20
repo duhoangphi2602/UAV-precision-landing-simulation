@@ -1,0 +1,19 @@
+precision: fp32
+batch_size: 1
+input_shape: [1, 3, 960, 960]
+dynamic_shapes: false
+
+workspace_gib: 2
+workspace_fallback_gib: 4
+
+fp16: false
+int8: false
+tf32: false
+sparsity: false
+dla: false
+
+builder_optimization_level: installed_default
+tactic_sources: installed_default
+profiling_verbosity: layer_names_only
+timing_cache: local_ignored
+engine_output: local_ignored

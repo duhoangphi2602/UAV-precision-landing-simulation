@@ -78,7 +78,10 @@ class MovingPlatformController(Node):
             self.current_enu_vy = (msg.position.y - self.last_enu_pose.position.y) / dt
             self.current_enu_vz = (msg.position.z - self.last_enu_pose.position.z) / dt
             
-        self.last_enu_pose = self.current_enu_pose
+        # Keep the immediately preceding sample. The former assignment lagged
+        # this reference by one callback, producing a two-sample displacement
+        # divided by a one-sample interval (approximately 2x reported speed).
+        self.last_enu_pose = msg
         self.current_enu_pose = msg
         self.last_pose_stamp = now
 

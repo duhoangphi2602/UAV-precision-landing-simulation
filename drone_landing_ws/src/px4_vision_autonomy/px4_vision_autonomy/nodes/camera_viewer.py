@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import rclpy
 from rclpy.node import Node
+from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import Image
 from precision_landing_interfaces.msg import TargetObservation, ControlCommand, MissionStatus, MovingPlatformState
 import cv2
@@ -22,9 +23,14 @@ def imgmsg_to_cv2(img_msg):
     return image
 
 class CameraViewer(Node):
+    CAMERA_DISPLAY_WIDTH = 640
+    CAMERA_DISPLAY_HEIGHT = 480
+    PANEL_WIDTH = 250
+
     def __init__(self):
         super().__init__('camera_viewer')
-        self.subscription = self.create_subscription(Image, '/aruco/debug_image', self.image_callback, 10)
+        self.subscription = self.create_subscription(
+            Image, '/camera', self.image_callback, qos_profile_sensor_data)
         self.obs_sub = self.create_subscription(TargetObservation, '/precision_landing/target_observation', self.obs_callback, 10)
         self.cmd_sub = self.create_subscription(ControlCommand, '/precision_landing/control_command', self.cmd_callback, 10)
         self.status_sub = self.create_subscription(MissionStatus, '/precision_landing/mission_status', self.status_callback, 10)
@@ -39,7 +45,9 @@ class CameraViewer(Node):
         self.platform_state = None
         self.platform_start_north_m = None
         self.platform_start_time = None
-        self.platform_measured_speeds = []
+        self.platform_last_moving_north_m = None
+        self.platform_last_moving_time = None
+        self.platform_commanded_speed_mps = 0.0
 
         self.trajectory = []
 
@@ -65,7 +73,7 @@ class CameraViewer(Node):
         self.metrics = {
             "result": "UNKNOWN",
             "controller": "UNKNOWN",
-            "mode": "FIXED",
+            "mode": self.mission_mode.upper(),
             "generated_at": "",
             "mission_duration_sec": 0.0,
             "alignment_duration_sec": None,
@@ -107,12 +115,16 @@ class CameraViewer(Node):
     def platform_callback(self, msg):
         self.platform_state = msg
         if self.mission_mode == 'moving':
+            if abs(msg.commanded_speed_mps) > 0.0:
+                self.platform_commanded_speed_mps = abs(msg.commanded_speed_mps)
+
             if msg.moving and self.platform_start_time is None:
                 self.platform_start_time = time.perf_counter()
                 self.platform_start_north_m = msg.position_ned_m.x
 
             if msg.moving:
-                self.platform_measured_speeds.append(abs(msg.velocity_ned_mps.x))
+                self.platform_last_moving_time = time.perf_counter()
+                self.platform_last_moving_north_m = msg.position_ned_m.x
 
     def obs_callback(self, msg):
         self.obs = msg
@@ -213,7 +225,7 @@ class CameraViewer(Node):
 
             self.metrics["re_align_count"] = getattr(msg, "re_align_count", 0)
             if self.platform_state:
-                self.metrics["platform_speed_command_mps"] = float(self.platform_state.commanded_speed_mps)
+                self.metrics["platform_speed_command_mps"] = self.platform_commanded_speed_mps
 
             self.metrics["disarmed"] = not msg.armed
             self.metrics["mission_complete"] = True
@@ -228,11 +240,15 @@ class CameraViewer(Node):
 
             if self.mission_mode == 'moving' and self.platform_state:
                 motion_duration = 0.0
-                if self.platform_start_time:
-                    motion_duration = time.perf_counter() - self.platform_start_time
+                if self.platform_start_time is not None and self.platform_last_moving_time is not None:
+                    motion_duration = max(0.0, self.platform_last_moving_time - self.platform_start_time)
                 self.metrics["platform_motion_duration_sec"] = motion_duration
                 self.metrics["platform_start_north_m"] = self.platform_start_north_m
-                touchdown_north_m = self.platform_state.position_ned_m.x
+                touchdown_north_m = (
+                    self.platform_last_moving_north_m
+                    if self.platform_last_moving_north_m is not None
+                    else self.platform_state.position_ned_m.x
+                )
                 self.metrics["platform_touchdown_north_m"] = touchdown_north_m
 
                 disp = 0.0
@@ -240,11 +256,11 @@ class CameraViewer(Node):
                     disp = abs(touchdown_north_m - self.platform_start_north_m)
                 self.metrics["platform_displacement_m"] = disp
 
-                self.metrics["platform_commanded_speed_mps"] = self.platform_state.commanded_speed_mps
-                mean_speed = sum(self.platform_measured_speeds)/len(self.platform_measured_speeds) if self.platform_measured_speeds else 0.0
+                self.metrics["platform_commanded_speed_mps"] = self.platform_commanded_speed_mps
+                mean_speed = disp / motion_duration if motion_duration > 0.0 else 0.0
                 self.metrics["platform_measured_speed_mean_mps"] = mean_speed
 
-                exp_disp = 0.10 * motion_duration
+                exp_disp = self.platform_commanded_speed_mps * motion_duration
                 self.metrics["platform_expected_displacement_m"] = exp_disp
                 ratio = disp / exp_disp if exp_disp > 0 else 0.0
                 self.metrics["platform_displacement_ratio"] = ratio
@@ -318,30 +334,32 @@ class CameraViewer(Node):
         try:
             cv_image = self.latest_cv_image.copy()
 
-            # Target sizing: 960x720 for camera, panel 320x720, total 1280x720
-            # Resize cv_image to 960x720 preserving aspect ratio of standard 4:3
-            cv_image = cv2.resize(cv_image, (960, 720))
+            # Compact 4:3 camera presentation; the Gazebo sensor remains 1280x960.
+            cv_image = cv2.resize(
+                cv_image, (self.CAMERA_DISPLAY_WIDTH, self.CAMERA_DISPLAY_HEIGHT))
 
-            panel = np.zeros((720, 320, 3), dtype=np.uint8)
+            panel = np.zeros(
+                (self.CAMERA_DISPLAY_HEIGHT, self.PANEL_WIDTH, 3), dtype=np.uint8)
 
             # Styling definitions
-            PAD = 14
-            ROW = 28
-            y_offset = 30
+            PAD = 10
+            ROW = 15
+            HEADING_ROW = 17
+            y_offset = 17
             H_FONT = cv2.FONT_HERSHEY_SIMPLEX
-            H_SCALE = 0.70
-            H_THICK = 2
+            H_SCALE = 0.48
+            H_THICK = 1
             H_COLOR = (0, 255, 255) # Yellow
 
             F_FONT = cv2.FONT_HERSHEY_SIMPLEX
-            F_SCALE = 0.55
+            F_SCALE = 0.40
             F_THICK = 1
             F_COLOR = (255, 255, 255) # White
 
             # Function to draw field
             def draw_heading(text, y):
                 cv2.putText(panel, text, (PAD, y), H_FONT, H_SCALE, H_COLOR, H_THICK)
-                return y + ROW
+                return y + HEADING_ROW
 
             def draw_field(key, val, y, color=F_COLOR):
                 cv2.putText(panel, f"{key}: {val}", (PAD, y), F_FONT, F_SCALE, color, F_THICK)
@@ -350,8 +368,8 @@ class CameraViewer(Node):
             y_offset = draw_heading("MODE", y_offset)
 
             # Draw Mode Buttons
-            btn_w, btn_h = 85, 30
-            modes = ["FIXED", "MOVING", "GIMBAL"]
+            btn_w, btn_h = 95, 22
+            modes = ["FIXED", "MOVING"]
             bx = PAD
             for idx, mode in enumerate(modes):
                 is_active = (mode.lower() == self.mission_mode.lower())
@@ -364,8 +382,8 @@ class CameraViewer(Node):
                 tx = bx + (btn_w - tsize[0]) // 2
                 ty = y_offset + (btn_h + tsize[1]) // 2
                 cv2.putText(panel, mode, (tx, ty), F_FONT, F_SCALE, txt_col, F_THICK)
-                bx += btn_w + 10
-            y_offset += btn_h + ROW
+                bx += btn_w + 8
+            y_offset += btn_h + 8
 
             y_offset = draw_heading("MISSION", y_offset)
             if self.status:
@@ -403,15 +421,15 @@ class CameraViewer(Node):
 
             if self.obs:
                 if self.obs.valid:
-                    # Update trajectory relative to the 960x720 resized image
+                    # Update trajectory relative to the compact camera image.
                     # Original coordinates from obs are based on the original image (likely 1280x960 or 640x480)
-                    # We will just scale them to 960x720.
+                    # Scale detector coordinates without changing aspect ratio.
                     # Assuming obs center is from original size, but wait, error is normalized or in pixels?
                     # In aruco_detector we passed center_x_px, center_y_px in original size.
                     orig_w = self.latest_cv_image.shape[1]
                     orig_h = self.latest_cv_image.shape[0]
-                    scale_x = 960.0 / orig_w
-                    scale_y = 720.0 / orig_h
+                    scale_x = self.CAMERA_DISPLAY_WIDTH / orig_w
+                    scale_y = self.CAMERA_DISPLAY_HEIGHT / orig_h
                     cx = int(self.obs.center_x_px * scale_x)
                     cy = int(self.obs.center_y_px * scale_y)
                     self.trajectory.append((cx, cy))
@@ -432,8 +450,8 @@ class CameraViewer(Node):
             y_offset = draw_field("UI HZ", f"{ui_fps:.1f}", y_offset)
 
             # Draw CLEAR TARGET Button at bottom
-            y_offset = 720 - 40
-            btn_w, btn_h = 180, 30
+            y_offset = self.CAMERA_DISPLAY_HEIGHT - 31
+            btn_w, btn_h = 150, 22
             cv2.rectangle(panel, (PAD, y_offset), (PAD + btn_w, y_offset + btn_h), (0, 0, 255), -1)
             tsize, _ = cv2.getTextSize("CLEAR TARGET", F_FONT, F_SCALE, F_THICK)
             tx = PAD + (btn_w - tsize[0]) // 2
@@ -441,7 +459,13 @@ class CameraViewer(Node):
             cv2.putText(panel, "CLEAR TARGET", (tx, ty), F_FONT, F_SCALE, (255, 255, 255), F_THICK)
 
             # Deadband and Trajectory
-            cv2.circle(cv_image, (480, 360), 20, (0, 255, 255), 1) # deadband
+            cv2.circle(
+                cv_image,
+                (self.CAMERA_DISPLAY_WIDTH // 2, self.CAMERA_DISPLAY_HEIGHT // 2),
+                14,
+                (0, 255, 255),
+                1,
+            )  # deadband
             for i in range(1, len(self.trajectory)):
                 cv2.line(cv_image, self.trajectory[i-1], self.trajectory[i], (255, 0, 255), 2)
 
@@ -450,24 +474,25 @@ class CameraViewer(Node):
             if self.metrics_saved and self.terminal_time is not None:
                 if time.perf_counter() - self.terminal_time < self.terminal_display_duration:
                     overlay = dashboard.copy()
-                    cv2.rectangle(overlay, (200, 150), (1080, 500), (0, 0, 0), -1)
+                    cv2.rectangle(overlay, (110, 80), (800, 405), (0, 0, 0), -1)
                     if self.metrics['result'] == "SUCCESS":
                         color = (0, 255, 0)
                     elif self.metrics['result'] == "PRECISION_FAIL":
                         color = (0, 165, 255)
                     else:
                         color = (0, 0, 255)
-                    cv2.putText(overlay, f"MISSION {self.metrics['result']}", (400, 220), H_FONT, 1.2, color, 3)
+                    cv2.putText(overlay, f"MISSION {self.metrics['result']}", (180, 135), H_FONT, 0.9, color, 2)
 
-                    cv2.putText(overlay, f"Controller: {self.metrics['controller']}", (250, 280), F_FONT, 0.8, (255, 255, 255), 1)
-                    cv2.putText(overlay, f"Duration: {self.metrics['mission_duration_sec']:.1f}s", (250, 320), F_FONT, 0.8, (255, 255, 255), 1)
-                    cv2.putText(overlay, f"Max Error: {self.metrics['max_center_error']:.1f}px", (250, 360), F_FONT, 0.8, (255, 255, 255), 1)
+                    cv2.putText(overlay, f"Controller: {self.metrics['controller']}", (155, 185), F_FONT, 0.65, (255, 255, 255), 1)
+                    cv2.putText(overlay, f"Duration: {self.metrics['mission_duration_sec']:.1f}s", (155, 225), F_FONT, 0.65, (255, 255, 255), 1)
+                    cv2.putText(overlay, f"Max Error: {self.metrics['max_center_error']:.1f}px", (155, 265), F_FONT, 0.65, (255, 255, 255), 1)
 
-                    final_err_str = f"{self.metrics['final_center_error']:.1f}px" if self.metrics['final_center_error'] is not None else "None"
-                    cv2.putText(overlay, f"Final Error: {final_err_str}", (250, 400), F_FONT, 0.8, (255, 255, 255), 1)
+                    final_error = self.metrics.get('final_center_error_px')
+                    final_err_str = f"{final_error:.1f}px" if final_error is not None else "None"
+                    cv2.putText(overlay, f"Final Error: {final_err_str}", (155, 305), F_FONT, 0.65, (255, 255, 255), 1)
 
-                    cv2.putText(overlay, f"Marker Losses: {self.metrics['marker_loss_count']}", (250, 440), F_FONT, 0.8, (255, 255, 255), 1)
-                    cv2.putText(overlay, f"Avg FPS: {self.metrics['average_fresh_frame_fps']:.1f}", (250, 480), F_FONT, 0.8, (255, 255, 255), 1)
+                    cv2.putText(overlay, f"Marker Losses: {self.metrics['marker_loss_count']}", (155, 345), F_FONT, 0.65, (255, 255, 255), 1)
+                    cv2.putText(overlay, f"Avg FPS: {self.metrics.get('fresh_camera_fps', 0.0):.1f}", (155, 385), F_FONT, 0.65, (255, 255, 255), 1)
                     cv2.addWeighted(overlay, 0.8, dashboard, 0.2, 0, dashboard)
 
             if self.status and self.status.state in [MissionStatus.STATE_ALIGN, MissionStatus.STATE_DESCEND] and not self.saved_screenshot:
