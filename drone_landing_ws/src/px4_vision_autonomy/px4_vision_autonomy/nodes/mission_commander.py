@@ -11,8 +11,16 @@ import math
 import time
 import json
 from geometry_msgs.msg import Twist
-from precision_landing_interfaces.msg import MissionStatus, ControlCommand, MovingPlatformState, TargetObservation
+from precision_landing_interfaces.msg import MissionStatus, ControlCommand, MovingPlatformState, OperatorCommand, TargetObservation
 from ros_gz_interfaces.msg import Contacts
+from px4_vision_autonomy.gesture_control_policy import (
+    ControlAuthorityLatch,
+    OperatorInput,
+    SafeCommand,
+    TargetReadyGate,
+    body_velocity_for_command,
+    resolve_safe_command,
+)
 
 # Mission States
 STATE_IDLE = "IDLE"
@@ -24,6 +32,21 @@ STATE_ALIGN = "ALIGN"
 STATE_DESCEND = "DESCEND"
 STATE_LAND = "LAND"
 STATE_DONE = "DONE"
+STATE_GESTURE_READY = "GESTURE_READY"
+STATE_MANUAL_GESTURE_FLIGHT = "MANUAL_GESTURE_FLIGHT"
+STATE_TARGET_AVAILABLE = "TARGET_AVAILABLE"
+STATE_AUTO_LAND_AUTHORIZED = "AUTO_LAND_AUTHORIZED"
+
+OPERATOR_COMMAND_NAMES = {
+    OperatorCommand.COMMAND_NO_COMMAND: "NO_COMMAND",
+    OperatorCommand.COMMAND_TAKEOFF: "TAKEOFF",
+    OperatorCommand.COMMAND_FORWARD: "FORWARD",
+    OperatorCommand.COMMAND_BACKWARD: "BACKWARD",
+    OperatorCommand.COMMAND_LEFT: "LEFT",
+    OperatorCommand.COMMAND_RIGHT: "RIGHT",
+    OperatorCommand.COMMAND_HOLD: "HOLD",
+    OperatorCommand.COMMAND_AUTO_LAND: "AUTO_LAND",
+}
 
 class MissionCommander(Node):
     def __init__(self):
@@ -44,6 +67,13 @@ class MissionCommander(Node):
         self.declare_parameter('wp_east', 5.8)
         self.declare_parameter('wp_down', -3.0)
         self.declare_parameter('mission_mode', 'fixed')
+        self.declare_parameter('operator_command_topic', '/operator/gesture_command')
+        self.declare_parameter('gesture_minimum_confidence', 0.8)
+        self.declare_parameter('gesture_command_ttl_sec', 0.5)
+        self.declare_parameter('manual_xy_speed_m_s', 0.5)
+        self.declare_parameter('gesture_takeoff_altitude_m', 3.0)
+        self.declare_parameter('target_ready_observations', 3)
+        self.declare_parameter('target_ready_max_age_sec', 0.5)
 
         # Mapping helpers for quick iteration
         self.declare_parameter('swap_axes', False)
@@ -63,6 +93,13 @@ class MissionCommander(Node):
         self.wp_east = self.get_parameter('wp_east').get_parameter_value().double_value
         self.wp_down = self.get_parameter('wp_down').get_parameter_value().double_value
         self.mission_mode = self.get_parameter('mission_mode').get_parameter_value().string_value
+        self.operator_command_topic = self.get_parameter('operator_command_topic').get_parameter_value().string_value
+        self.gesture_minimum_confidence = self.get_parameter('gesture_minimum_confidence').get_parameter_value().double_value
+        self.gesture_command_ttl_sec = self.get_parameter('gesture_command_ttl_sec').get_parameter_value().double_value
+        self.manual_xy_speed_m_s = self.get_parameter('manual_xy_speed_m_s').get_parameter_value().double_value
+        self.gesture_takeoff_altitude_m = self.get_parameter('gesture_takeoff_altitude_m').get_parameter_value().double_value
+        self.target_ready_observations = self.get_parameter('target_ready_observations').get_parameter_value().integer_value
+        self.target_ready_max_age_sec = self.get_parameter('target_ready_max_age_sec').get_parameter_value().double_value
 
         # State
         self.state = STATE_IDLE
@@ -85,6 +122,18 @@ class MissionCommander(Node):
 
         self.platform_state = None
         self.re_align_count = 0
+        self.last_operator_input = None
+        self.last_operator_receipt_time = 0.0
+        self.current_gesture_command = "HOLD"
+        self.current_gesture_reason = "NO_INPUT"
+        self._last_gesture_log_key = None
+        self.target_ready_gate = TargetReadyGate(self.target_ready_observations)
+        self.last_valid_target_receipt_time = 0.0
+        self.manual_authority = self.mission_mode in ('gesture', 'final')
+        self.autonomous_landing_authority = False
+        self.authority_latch = ControlAuthorityLatch()
+        self.auto_land_rejected_until_release = False
+        self.handoff_elapsed_sec = None
 
         # Subscribers
         self.error_sub = self.create_subscription(
@@ -112,6 +161,14 @@ class MissionCommander(Node):
             self.contact_callback,
             10)
 
+        self.operator_sub = None
+        if self.mission_mode in ('gesture', 'final'):
+            self.operator_sub = self.create_subscription(
+                OperatorCommand,
+                self.operator_command_topic,
+                self.operator_command_callback,
+                10)
+
         self.mission_metrics = {
             "result": "IN_PROGRESS",
             "touchdown_confirmed": False,
@@ -130,6 +187,12 @@ class MissionCommander(Node):
             "touchdown_platform_east_m": 0.0,
             "touchdown_horizontal_error_m": 0.0
         }
+        self.mission_metrics.update({
+            "handoff_elapsed_sec": None,
+            "handoff_state": None,
+            "manual_authority_after_handoff": None,
+            "autonomous_authority_after_handoff": None
+        })
 
         self.status_pub = self.create_publisher(String, '/mission/status', 10)
         self.status_typed_pub = self.create_publisher(MissionStatus, '/precision_landing/mission_status', 10)
@@ -155,6 +218,13 @@ class MissionCommander(Node):
         self.marker_visible = True
         self.new_observation_align = True
         self.new_observation_desc = True
+        self.target_ready_gate.observe(
+            valid=bool(msg.valid),
+            stale=bool(msg.stale),
+            sequence_id=int(msg.sequence_id),
+        )
+        if msg.valid and not msg.stale:
+            self.last_valid_target_receipt_time = time.monotonic()
 
     def platform_callback(self, msg):
         self.platform_state = msg
@@ -175,10 +245,59 @@ class MissionCommander(Node):
         self.cpp_vel_y = msg.linear.y
         self.last_cpp_cmd_time = time.time()
 
+    def operator_command_callback(self, msg):
+        command = OPERATOR_COMMAND_NAMES.get(int(msg.command), "UNKNOWN")
+        self.last_operator_input = OperatorInput(
+            command=command,
+            confidence=float(msg.confidence),
+            valid=bool(msg.valid),
+            stale=bool(msg.stale),
+            age_sec=0.0,
+        )
+        self.last_operator_receipt_time = time.monotonic()
+
+    def is_moving_landing_mode(self):
+        return self.mission_mode in ('moving', 'final')
+
+    def target_is_ready(self):
+        if self.last_valid_target_receipt_time <= 0.0:
+            return False
+        return self.target_ready_gate.ready(
+            observation_age_sec=max(
+                0.0,
+                time.monotonic() - self.last_valid_target_receipt_time,
+            ),
+            maximum_age_sec=self.target_ready_max_age_sec,
+        )
+
+    def resolve_operator_command(self, *, auto_land_enabled=False):
+        operator_input = self.last_operator_input
+        if operator_input is not None:
+            operator_input = OperatorInput(
+                command=operator_input.command,
+                confidence=operator_input.confidence,
+                valid=operator_input.valid,
+                stale=operator_input.stale,
+                age_sec=max(0.0, time.monotonic() - self.last_operator_receipt_time),
+            )
+        return resolve_safe_command(
+            operator_input,
+            ttl_sec=self.gesture_command_ttl_sec,
+            minimum_confidence=self.gesture_minimum_confidence,
+            auto_land_enabled=auto_land_enabled,
+        )
+
     def publish_typed_status(self):
         msg = MissionStatus()
         msg.header.stamp = self.get_clock().now().to_msg()
-        msg.mode = MissionStatus.MODE_MOVING if self.mission_mode == 'moving' else MissionStatus.MODE_FIXED
+        if self.mission_mode == 'final':
+            msg.mode = MissionStatus.MODE_FINAL
+        elif self.mission_mode == 'gesture':
+            msg.mode = MissionStatus.MODE_GESTURE
+        elif self.mission_mode == 'moving':
+            msg.mode = MissionStatus.MODE_MOVING
+        else:
+            msg.mode = MissionStatus.MODE_FIXED
 
         state_map = {
             STATE_IDLE: MissionStatus.STATE_INIT,
@@ -190,6 +309,10 @@ class MissionCommander(Node):
             STATE_DESCEND: MissionStatus.STATE_DESCEND,
             STATE_LAND: MissionStatus.STATE_LAND,
             STATE_DONE: MissionStatus.STATE_COMPLETE,
+            STATE_GESTURE_READY: MissionStatus.STATE_GESTURE_READY,
+            STATE_MANUAL_GESTURE_FLIGHT: MissionStatus.STATE_MANUAL_GESTURE_FLIGHT,
+            STATE_TARGET_AVAILABLE: MissionStatus.STATE_TARGET_AVAILABLE,
+            STATE_AUTO_LAND_AUTHORIZED: MissionStatus.STATE_AUTO_LAND_AUTHORIZED,
             "FAILED": MissionStatus.STATE_FAILED
         }
         msg.state = state_map.get(self.state, MissionStatus.STATE_INIT)
@@ -205,6 +328,26 @@ class MissionCommander(Node):
         msg.touchdown_horizontal_error_m = float(self.touchdown_horizontal_error_m)
         msg.re_align_count = int(self.re_align_count)
 
+        if self.mission_mode in ('gesture', 'final'):
+            target_status = "READY" if self.target_is_ready() else "SEARCHING"
+            authority = (
+                "AUTONOMOUS" if self.autonomous_landing_authority else "HUMAN"
+            )
+            control = (
+                "C++ PID" if self.autonomous_landing_authority else "GESTURE MANUAL"
+            )
+            msg.detail = (
+                f"CONTROL: {control}"
+                f" | COMMAND: {self.current_gesture_command}"
+                f" | FILTER: {self.current_gesture_reason}"
+                f" | TARGET: {target_status}"
+                f" | AUTHORITY: {authority}"
+                f" | TTL: {self.gesture_command_ttl_sec:.2f}s"
+                f" | HANDOFF: {'LATCHED' if self.autonomous_landing_authority else 'AVAILABLE' if self.mission_mode == 'final' else 'DISABLED'}"
+            )
+            self.status_typed_pub.publish(msg)
+            return
+
         details = [f"CONTROL: {self.control_source}"]
 
         if hasattr(self, 'current_obs') and self.current_obs.valid:
@@ -214,7 +357,7 @@ class MissionCommander(Node):
             details.append("MARKER SIZE: N/A")
             details.append("NORM ERROR: N/A")
 
-        low_alt_yes_no = "YES" if (self.mission_mode == 'moving' and getattr(self, 'current_alt', 10.0) <= 0.80) else "NO"
+        low_alt_yes_no = "YES" if (self.is_moving_landing_mode() and getattr(self, 'current_alt', 10.0) <= 0.80) else "NO"
         details.append(f"LOW ALT: {low_alt_yes_no}")
 
         fc_active = "ACTIVE" if getattr(self, 'final_commit_active', False) else "INACTIVE"
@@ -247,6 +390,188 @@ class MissionCommander(Node):
         asyncio.set_event_loop(self.loop)
         self.loop.run_until_complete(self.run_mission())
 
+    def publish_gesture_velocity(self, forward_m_s, right_m_s, safe_command):
+        command = Twist()
+        command.linear.x = float(forward_m_s)
+        command.linear.y = float(right_m_s)
+        self.cmd_vel_py_pub.publish(command)
+
+        typed = ControlCommand()
+        typed.header.stamp = self.get_clock().now().to_msg()
+        typed.controller = "GESTURE MANUAL"
+        typed.valid = safe_command.reason == "ACCEPTED"
+        typed.stale = safe_command.reason == "STALE_COMMAND"
+        typed.saturated = False
+        typed.command = command
+        self.cmd_vel_typed_py_pub.publish(typed)
+
+    async def run_gesture_mission(self, *, auto_land_enabled=False):
+        """Own PX4 manually until shutdown or a one-way final handoff."""
+
+        self.state = STATE_GESTURE_READY
+        self.current_gesture_command = "HOLD"
+        self.current_gesture_reason = "WAITING_FOR_TAKEOFF"
+        self.get_logger().info(
+            "GESTURE_READY: waiting for debounced typed TAKEOFF operator command"
+        )
+        while rclpy.ok():
+            safe_command = self.resolve_operator_command()
+            self.current_gesture_command = safe_command.command
+            self.current_gesture_reason = safe_command.reason
+            self.status_pub.publish(
+                String(data=f"State: {self.state} | COMMAND: {safe_command.command} | FILTER: {safe_command.reason}")
+            )
+            self.publish_typed_status()
+            if safe_command.command == "TAKEOFF" and safe_command.reason == "ACCEPTED":
+                break
+            await asyncio.sleep(0.1)
+
+        if not rclpy.ok():
+            return False
+
+        self.state = STATE_TAKEOFF
+        self.current_gesture_reason = "TAKEOFF_ACCEPTED_ONCE"
+        self.publish_typed_status()
+        try:
+            await self.drone.action.arm()
+            self.is_armed = True
+            await self.drone.action.takeoff()
+            await asyncio.sleep(10.0)
+            self.get_logger().info(
+                "Gesture takeoff waypoint: North=0.0, East=0.0, "
+                f"Down=-{self.gesture_takeoff_altitude_m:.1f}"
+            )
+            for _ in range(5):
+                await self.drone.offboard.set_position_ned(
+                    PositionNedYaw(
+                        0.0,
+                        0.0,
+                        -self.gesture_takeoff_altitude_m,
+                        0.0,
+                    )
+                )
+                await asyncio.sleep(0.1)
+            await self.drone.offboard.start()
+            await asyncio.sleep(5.0)
+        except Exception as error:
+            self.state = "FAILED"
+            self.current_gesture_reason = "TAKEOFF_OR_OFFBOARD_FAILED"
+            self.get_logger().error(f"Gesture takeoff failed: {error}")
+            self.publish_typed_status()
+            return False
+
+        self.state = STATE_MANUAL_GESTURE_FLIGHT
+        self.get_logger().info(
+            "MANUAL_GESTURE_FLIGHT active: body-frame XY only; yaw/down fixed at zero"
+        )
+        try:
+            while rclpy.ok():
+                target_ready = self.target_is_ready()
+                self.state = (
+                    STATE_TARGET_AVAILABLE
+                    if auto_land_enabled and target_ready
+                    else STATE_MANUAL_GESTURE_FLIGHT
+                )
+                safe_command = self.resolve_operator_command(
+                    auto_land_enabled=auto_land_enabled
+                )
+                command_for_velocity = safe_command.command
+                reason = safe_command.reason
+
+                if command_for_velocity != "AUTO_LAND":
+                    self.auto_land_rejected_until_release = False
+
+                if command_for_velocity == "AUTO_LAND":
+                    if self.auto_land_rejected_until_release:
+                        command_for_velocity = "HOLD"
+                        reason = "AUTO_LAND_RELEASE_REQUIRED"
+                    elif not target_ready:
+                        command_for_velocity = "HOLD"
+                        reason = "TARGET_NOT_READY"
+                        self.auto_land_rejected_until_release = True
+                        self.get_logger().warn(
+                            "TARGET_NOT_READY: AUTO_LAND rejected; release and retry"
+                        )
+                    elif not self.authority_latch.authorize_auto_land(
+                        target_ready=target_ready
+                    ):
+                        command_for_velocity = "HOLD"
+                        reason = "AUTHORITY_HANDOFF_REJECTED"
+                    else:
+                        zero = SafeCommand("HOLD", "AUTO_LAND_HANDOFF_ZERO")
+                        await self.drone.offboard.set_velocity_body(
+                            VelocityBodyYawspeed(0.0, 0.0, 0.0, 0.0)
+                        )
+                        self.publish_gesture_velocity(0.0, 0.0, zero)
+                        self.manual_authority = self.authority_latch.manual_authority
+                        self.autonomous_landing_authority = (
+                            self.authority_latch.autonomous_landing_authority
+                        )
+                        self.handoff_elapsed_sec = float(
+                            time.time() - self.mission_start_time
+                        )
+                        self.mission_metrics["handoff_elapsed_sec"] = self.handoff_elapsed_sec
+                        self.mission_metrics["handoff_state"] = STATE_AUTO_LAND_AUTHORIZED
+                        self.mission_metrics["manual_authority_after_handoff"] = False
+                        self.mission_metrics["autonomous_authority_after_handoff"] = True
+                        self.state = STATE_AUTO_LAND_AUTHORIZED
+                        self.current_gesture_command = "HOLD"
+                        self.current_gesture_reason = "AUTO_LAND_ACCEPTED_AUTHORITY_LATCHED"
+                        self.status_pub.publish(
+                            String(data="State: AUTO_LAND_AUTHORIZED | AUTHORITY: AUTONOMOUS")
+                        )
+                        self.publish_typed_status()
+                        self.get_logger().info(
+                            "AUTO_LAND_AUTHORIZED: HUMAN -> AUTONOMOUS; manual authority permanently revoked"
+                        )
+                        await asyncio.sleep(0.25)
+                        self.state = STATE_SCAN
+                        return True
+
+                if command_for_velocity == "TAKEOFF":
+                    command_for_velocity = "HOLD"
+                    reason = "TAKEOFF_IGNORED_ALREADY_AIRBORNE"
+                forward_m_s, right_m_s = body_velocity_for_command(
+                    command_for_velocity,
+                    self.manual_xy_speed_m_s,
+                )
+                self.current_gesture_command = command_for_velocity
+                self.current_gesture_reason = reason
+
+                log_key = (command_for_velocity, reason)
+                if log_key != self._last_gesture_log_key:
+                    if reason == "LANDING_HANDOFF_NOT_ENABLED":
+                        self.get_logger().warn("LANDING_HANDOFF_NOT_ENABLED")
+                    self.get_logger().info(
+                        f"Gesture control: command={command_for_velocity} "
+                        f"reason={reason} body_forward={forward_m_s:.2f} "
+                        f"body_right={right_m_s:.2f}"
+                    )
+                    self._last_gesture_log_key = log_key
+
+                await self.drone.offboard.set_velocity_body(
+                    VelocityBodyYawspeed(forward_m_s, right_m_s, 0.0, 0.0)
+                )
+                applied_command = SafeCommand(command_for_velocity, reason)
+                self.publish_gesture_velocity(
+                    forward_m_s,
+                    right_m_s,
+                    applied_command,
+                )
+                self.status_pub.publish(
+                    String(data=f"State: {self.state} | COMMAND: {command_for_velocity} | FILTER: {reason}")
+                )
+                self.publish_typed_status()
+                await asyncio.sleep(0.1)
+        finally:
+            try:
+                await self.drone.offboard.set_velocity_body(
+                    VelocityBodyYawspeed(0.0, 0.0, 0.0, 0.0)
+                )
+            except Exception:
+                pass
+        return False
+
     async def run_mission(self):
         await self.drone.connect(system_address=self.system_address)
 
@@ -273,9 +598,21 @@ class MissionCommander(Node):
                 self.get_logger().info("Drone is ready to arm")
                 break
 
-        # Start Mission Loop
-        self.state = STATE_ARM
+        if self.mission_mode == 'gesture':
+            await self.run_gesture_mission()
+            return
 
+        if self.mission_mode == 'final':
+            handoff_complete = await self.run_gesture_mission(
+                auto_land_enabled=True
+            )
+            if not handoff_complete:
+                return
+        else:
+            # Accepted fixed/moving missions retain their original entry state.
+            self.state = STATE_ARM
+
+        # Start Mission Loop
         while self.state != STATE_DONE and self.state != "FAILED":
             # Update armed state roughly
             if self.state == STATE_ARM:
@@ -330,7 +667,7 @@ class MissionCommander(Node):
                 while time.time() - start_scan < 24: # 360 degrees at 15 deg/s = 24s
                     if time.time() - self.last_marker_time < 0.5:
                         self.get_logger().info("Marker Found!")
-                        if self.mission_mode == 'moving':
+                        if self.is_moving_landing_mode():
                             self.get_logger().info("Verifying platform motion...")
                             gate_pass = False
                             gate_start = time.time()
@@ -462,7 +799,7 @@ class MissionCommander(Node):
                     # continue reporting IN_AIR while Offboard commands a gentle
                     # descent against the pad. Restore the fixed-demo touchdown
                     # boundary that existed before the moving-platform slice.
-                    if self.mission_mode != 'moving' and current_alt <= 0.05:
+                    if not self.is_moving_landing_mode() and current_alt <= 0.05:
                         self.fixed_touchdown_debounce_count = getattr(
                             self, 'fixed_touchdown_debounce_count', 0) + 1
                         if self.fixed_touchdown_debounce_count >= 2:
@@ -540,13 +877,13 @@ class MissionCommander(Node):
                     err_x, err_y, err_mag = 0.0, 0.0, 0.0
                     marker_side_px, norm_err = 0.0, -1.0
 
-                is_low_alt = (self.mission_mode == 'moving' and current_alt <= 0.80)
+                is_low_alt = (self.is_moving_landing_mode() and current_alt <= 0.80)
                 if is_low_alt and not hasattr(self, 'low_alt_entered'):
                     self.low_alt_entered = True
                     self.get_logger().info(f"Entered LOW_ALTITUDE_ZONE at {current_alt:.2f}m")
 
                 # 3. Existing final commit logic for MOVING
-                if self.mission_mode == 'moving' and getattr(self, 'final_commit_active', False):
+                if self.is_moving_landing_mode() and getattr(self, 'final_commit_active', False):
                     if not hasattr(self, 'final_commit_start_time'):
                         self.final_commit_start_time = time.time()
                         self.get_logger().info(f"MOVING_FINAL_COMMIT active at alt={current_alt:.2f}")
@@ -614,7 +951,7 @@ class MissionCommander(Node):
 
                 if not is_low_alt:
                     # HIGH-ALTITUDE SAFETY (or FIXED mode logic)
-                    fixed_final_approach = self.mission_mode != 'moving' and current_alt < 0.3
+                    fixed_final_approach = not self.is_moving_landing_mode() and current_alt < 0.3
 
                     if self.new_observation_desc:
                         self.new_observation_desc = False
@@ -753,20 +1090,20 @@ class MissionCommander(Node):
                 self.get_logger().info("LANDING SEQUENCE. Stopping Offboard if running, and waiting for disarm...")
                 try:
                     await self.drone.offboard.set_velocity_body(VelocityBodyYawspeed(0.0, 0.0, 0.0, 0.0))
-                    if self.mission_mode != 'moving':
+                    if not self.is_moving_landing_mode():
                         # Keep the historical fixed-demo zero setpoint briefly so
                         # the vehicle remains settled before leaving Offboard.
                         await asyncio.sleep(2.0)
                     await self.drone.offboard.stop()
                 except: pass
 
-                if self.mission_mode != 'moving':
+                if not self.is_moving_landing_mode():
                     try:
                         await self.drone.action.land()
                     except Exception as e:
                         self.get_logger().error(f"action.land() failed: {e}")
 
-                if self.mission_mode == 'moving':
+                if self.is_moving_landing_mode():
                     tmsg = Twist()
                     self.cmd_vel_py_pub.publish(tmsg)
 
@@ -815,7 +1152,7 @@ class MissionCommander(Node):
                 try:
                     async for pos in self.drone.telemetry.position_velocity_ned():
                         pad_north, pad_east = 0.0, 5.8
-                        if self.mission_mode == 'moving' and self.platform_state is not None:
+                        if self.is_moving_landing_mode() and self.platform_state is not None:
                             pad_north = self.platform_state.position_ned_m.x
                             pad_east = self.platform_state.position_ned_m.y
 

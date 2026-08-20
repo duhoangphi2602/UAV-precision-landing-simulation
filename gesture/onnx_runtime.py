@@ -79,6 +79,7 @@ class GestureOnnxRuntime:
         expected_deployment_sha256: str | None = None,
     ) -> None:
         self.config: dict[str, Any]
+        self.class_mapping_path: Path | None = None
         if preprocessing_path is None and deployment_config_path is None:
             config_path = resolve_repo_path(model_path)
             self.config = json.loads(config_path.read_text())
@@ -96,6 +97,10 @@ class GestureOnnxRuntime:
             expected_deployment_sha256 = self.config.get(
                 "expected_deployment_config_sha256"
             )
+            if "class_mapping" in self.config:
+                self.class_mapping_path = resolve_repo_path(
+                    self.config["class_mapping"]
+                )
         else:
             if preprocessing_path is None or deployment_config_path is None:
                 raise ValueError("all runtime artifact paths must be provided")
@@ -116,6 +121,13 @@ class GestureOnnxRuntime:
         ):
             if not path.is_file():
                 raise FileNotFoundError(f"missing gesture runtime artifact: {path}")
+        if (
+            self.class_mapping_path is not None
+            and not self.class_mapping_path.is_file()
+        ):
+            raise FileNotFoundError(
+                f"missing gesture runtime artifact: {self.class_mapping_path}"
+            )
         expected_hashes = (
             (self.model_path, expected_model_sha256),
             (self.preprocessing_path, expected_preprocessing_sha256),
@@ -124,6 +136,15 @@ class GestureOnnxRuntime:
         for path, expected in expected_hashes:
             if expected is not None and sha256_file(path) != expected:
                 raise ValueError(f"gesture runtime artifact hash mismatch: {path.name}")
+        if self.class_mapping_path is not None:
+            expected_mapping = self.config.get("expected_class_mapping_sha256")
+            if (
+                expected_mapping is not None
+                and sha256_file(self.class_mapping_path) != expected_mapping
+            ):
+                raise ValueError(
+                    "gesture runtime artifact hash mismatch: class_mapping.json"
+                )
 
         self.preprocessing = json.loads(self.preprocessing_path.read_text())
         self.deployment = json.loads(self.deployment_config_path.read_text())
@@ -133,6 +154,10 @@ class GestureOnnxRuntime:
             raise ValueError("deployment preprocessing version mismatch")
         if self.deployment["class_order"] != list(GESTURE_CLASSES):
             raise ValueError("deployment class order is not canonical")
+        if self.class_mapping_path is not None:
+            class_mapping = json.loads(self.class_mapping_path.read_text())
+            if class_mapping.get("class_order") != list(GESTURE_CLASSES):
+                raise ValueError("class mapping order is not canonical")
         self.class_order = tuple(GESTURE_CLASSES)
         self.feature_mean = np.asarray(
             self.preprocessing["feature_mean"], dtype=np.float32

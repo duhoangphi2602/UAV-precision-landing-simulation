@@ -1,0 +1,20 @@
+{
+  "schema_version": "gesture_uav_control_v1",
+  "operator_command_topic": "/operator/gesture_command",
+  "minimum_confidence": 0.8,
+  "stable_frames": 4,
+  "takeoff_stable_frames": 12,
+  "minimum_transition_interval_sec": 0.25,
+  "command_ttl_sec": 0.5,
+  "manual_xy_speed_m_s": 0.5,
+  "takeoff_altitude_m": 3.0,
+  "axis_contract": {
+    "frame": "MAVSDK VelocityBodyYawspeed body frame",
+    "FORWARD": [0.5, 0.0],
+    "BACKWARD": [-0.5, 0.0],
+    "LEFT": [0.0, -0.5],
+    "RIGHT": [0.0, 0.5],
+    "HOLD": [0.0, 0.0]
+  },
+  "auto_land_policy": "RECOGNIZE_AND_HOLD_LANDING_HANDOFF_NOT_ENABLED"
+}

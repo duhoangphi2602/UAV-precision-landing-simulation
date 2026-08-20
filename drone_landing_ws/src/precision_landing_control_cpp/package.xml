@@ -4,7 +4,7 @@
   <name>precision_landing_control_cpp</name>
   <version>0.0.1</version>
   <description>C++ PID Controller for Precision Landing</description>
-  <maintainer email="user@todo.todo">user</maintainer>
+  <maintainer email="duhoangphi2617@gmail.com">Hoang Phi</maintainer>
   <license>MIT</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>

@@ -11,6 +11,14 @@ import os
 import time
 import datetime
 
+
+def detail_field(detail, key, default):
+    prefix = f"{key}: "
+    for field in detail.split(" | "):
+        if field.startswith(prefix):
+            return field[len(prefix):]
+    return default
+
 def imgmsg_to_cv2(img_msg):
     if img_msg.encoding != "bgr8" and img_msg.encoding != "rgb8":
         pass
@@ -42,6 +50,7 @@ class CameraViewer(Node):
         self.obs = None
         self.cmd = None
         self.status = None
+        self.last_authority = "HUMAN"
         self.platform_state = None
         self.platform_start_north_m = None
         self.platform_start_time = None
@@ -90,6 +99,13 @@ class CameraViewer(Node):
             "re_align_count": 0,
             "platform_speed_command_mps": 0.0
         }
+        if self.mission_mode == 'final':
+            self.metrics.update({
+                "handoff_elapsed_sec": None,
+                "handoff_state": None,
+                "manual_authority_after_handoff": None,
+                "autonomous_authority_after_handoff": None,
+            })
 
         self.terminal_time = None
         self.terminal_display_duration = 5.0
@@ -114,7 +130,7 @@ class CameraViewer(Node):
 
     def platform_callback(self, msg):
         self.platform_state = msg
-        if self.mission_mode == 'moving':
+        if self.mission_mode in ('moving', 'final'):
             if abs(msg.commanded_speed_mps) > 0.0:
                 self.platform_commanded_speed_mps = abs(msg.commanded_speed_mps)
 
@@ -163,12 +179,26 @@ class CameraViewer(Node):
                     self.metrics["max_center_error"] = float(msg.error_magnitude)
 
     def cmd_callback(self, msg):
+        if self.mission_mode == 'final' and self.status is not None:
+            authority = detail_field(self.status.detail, "AUTHORITY", "HUMAN")
+            if authority == "HUMAN" and msg.controller != "GESTURE MANUAL":
+                return
+            if authority == "AUTONOMOUS" and msg.controller != "CPP PID":
+                return
         self.cmd = msg
         self.metrics["controller"] = msg.controller
 
     def status_callback(self, msg):
         current_state = msg.state
         now_perf = time.perf_counter()
+        if self.mission_mode == 'final':
+            authority = detail_field(msg.detail, "AUTHORITY", self.last_authority)
+            if self.last_authority == "HUMAN" and authority == "AUTONOMOUS":
+                self.metrics["handoff_elapsed_sec"] = msg.elapsed_sec
+                self.metrics["handoff_state"] = "AUTO_LAND_AUTHORIZED"
+                self.metrics["manual_authority_after_handoff"] = False
+                self.metrics["autonomous_authority_after_handoff"] = True
+            self.last_authority = authority
 
         if current_state != self.last_state:
             # Leaving ALIGN
@@ -238,7 +268,7 @@ class CameraViewer(Node):
             else:
                 self.metrics["result"] = "FAILED"
 
-            if self.mission_mode == 'moving' and self.platform_state:
+            if self.mission_mode in ('moving', 'final') and self.platform_state:
                 motion_duration = 0.0
                 if self.platform_start_time is not None and self.platform_last_moving_time is not None:
                     motion_duration = max(0.0, self.platform_last_moving_time - self.platform_start_time)
@@ -369,7 +399,12 @@ class CameraViewer(Node):
 
             # Draw Mode Buttons
             btn_w, btn_h = 95, 22
-            modes = ["FIXED", "MOVING"]
+            if self.mission_mode == 'gesture':
+                modes = ["GESTURE"]
+            elif self.mission_mode == 'final':
+                modes = ["FINAL"]
+            else:
+                modes = ["FIXED", "MOVING"]
             bx = PAD
             for idx, mode in enumerate(modes):
                 is_active = (mode.lower() == self.mission_mode.lower())
@@ -389,6 +424,13 @@ class CameraViewer(Node):
             if self.status:
                 y_offset = draw_field("STATE", self.status.state, y_offset)
                 y_offset = draw_field("ELAPSED", f"{self.status.elapsed_sec:.1f}s", y_offset)
+                if self.mission_mode == 'final':
+                    authority = detail_field(self.status.detail, "AUTHORITY", "HUMAN")
+                    target = detail_field(self.status.detail, "TARGET", "SEARCHING")
+                    flight_mode = "AUTO LAND" if authority == "AUTONOMOUS" else "GESTURE MANUAL"
+                    y_offset = draw_field("FLIGHT", flight_mode, y_offset)
+                    y_offset = draw_field("AUTHORITY", authority, y_offset)
+                    y_offset = draw_field("TARGET", target, y_offset)
                 if hasattr(self.status, 're_align_count'):
                     y_offset = draw_field("RE-ALIGN", str(self.status.re_align_count), y_offset)
 
@@ -410,7 +452,7 @@ class CameraViewer(Node):
                 y_offset = draw_field("ERROR Y", f"{self.obs.error_y:.1f}", y_offset)
                 y_offset = draw_field("ERROR MAG", f"{self.obs.error_magnitude:.1f}", y_offset)
 
-            if self.mission_mode == 'moving':
+            if self.mission_mode in ('moving', 'final'):
                 y_offset = draw_heading("PLATFORM", y_offset)
                 if self.platform_state:
                     y_offset = draw_field("STATE", "MOVING" if self.platform_state.moving else "STOPPED", y_offset)

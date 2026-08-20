@@ -89,11 +89,6 @@ class ArucoDetector(Node):
 
             cv_image = imgmsg_to_cv2(msg)
 
-            if "SCAN" in self.mission_status and not hasattr(self, 'saved_debug_frame'):
-                cv2.imwrite('/home/devuser/drone_landing_ws/src/px4_vision_autonomy/debug_frame.png', cv_image)
-                self.saved_debug_frame = True
-                self.get_logger().info("Saved debug camera frame to debug_frame.png")
-
             gray = cv2.cvtColor(cv_image, cv2.COLOR_BGR2GRAY)
 
             if self.use_new_api:

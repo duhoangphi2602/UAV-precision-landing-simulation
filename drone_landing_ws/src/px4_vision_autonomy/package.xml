@@ -4,7 +4,7 @@
   <name>px4_vision_autonomy</name>
   <version>0.0.1</version>
   <description>A ROS2 Humble package for PX4 offboard control with computer vision</description>
-  <maintainer email="user@example.com">User</maintainer>
+  <maintainer email="duhoangphi2617@gmail.com">Hoang Phi</maintainer>
   <license>MIT</license>
 
   <depend>rclpy</depend>

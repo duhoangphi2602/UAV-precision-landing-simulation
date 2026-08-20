@@ -1,0 +1,29 @@
+{
+  "class_order": [
+    "TAKEOFF",
+    "FORWARD",
+    "BACKWARD",
+    "LEFT",
+    "RIGHT",
+    "HOLD",
+    "AUTO_LAND"
+  ],
+  "class_to_index": {
+    "AUTO_LAND": 6,
+    "BACKWARD": 2,
+    "FORWARD": 1,
+    "HOLD": 5,
+    "LEFT": 3,
+    "RIGHT": 4,
+    "TAKEOFF": 0
+  },
+  "index_to_class": {
+    "0": "TAKEOFF",
+    "1": "FORWARD",
+    "2": "BACKWARD",
+    "3": "LEFT",
+    "4": "RIGHT",
+    "5": "HOLD",
+    "6": "AUTO_LAND"
+  }
+}

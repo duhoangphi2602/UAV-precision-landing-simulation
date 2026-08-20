@@ -4,7 +4,7 @@
   <name>precision_landing_interfaces</name>
   <version>0.0.0</version>
   <description>ROS 2 typed interfaces for precision landing</description>
-  <maintainer email="user@todo.todo">user</maintainer>
+  <maintainer email="duhoangphi2617@gmail.com">Hoang Phi</maintainer>
   <license>MIT</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
