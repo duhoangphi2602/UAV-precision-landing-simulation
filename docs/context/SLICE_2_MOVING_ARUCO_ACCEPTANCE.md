@@ -33,4 +33,4 @@ Thực hiện hạ cánh chính xác (precision landing) lên nền tảng ArUco
 - `MovingPlatformState.msg` đã được tạo để truyền trạng thái (đã chuyển đổi ENU->NED).
 - Dashboard tự động hiển thị `MODE: MOVING`, `PLATFORM: MOVING (0.10 m/s)`, và đếm số lần Re-Align.
 - `mission_commander.py` đọc cấu hình `mission_mode` để lấy thông tin toạ độ động cho pad_N và pad_E.
-- Không áp dụng YOLO, TensorRT, Feed-Forward, hay Kalman Filter theo đúng quy định chống scope creep.
+- Không bổ sung perception hoặc control path ngoài phạm vi moving-ArUco đã chấp nhận.

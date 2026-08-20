@@ -56,15 +56,13 @@ dist/
 **/__pycache__/
 **/*.py[cod]
 
-# Dataset
-ml/datasets/**
-!ml/datasets/README.md
-!ml/datasets/.gitkeep
+# Gesture datasets and local MediaPipe assets
+gesture/data/**
+gesture/models/**
+gesture/references/**
 
-# Training runs and models
-ml/experiments/**
-ml/exports/**
-ml/runs/**
+# Generated training/deployment runs and models
+gesture/experiments/**
 runs/**
 wandb/**
 **/*.pt
@@ -75,8 +73,7 @@ wandb/**
 **/*.trt
 **/*.cache
 
-# Generated ML reports and plots
-ml/reports/**
+# Generated model reports and plots
 **/results.csv
 **/results.png
 **/confusion_matrix*.png
@@ -88,15 +85,6 @@ ml/reports/**
 **/val_batch*_labels.jpg
 **/val_batch*_pred.jpg
 **/events.out.tfevents*
-
-# Local model metadata
-ml/MODEL_MANIFEST.yaml
-ml/*MANIFEST.local.yaml
-
-# Local generated evidence reports; maintained documentation remains trackable
-docs/evidence/SLICE_3_YOLO_ONNX_ACCEPTANCE.md
-docs/evidence/SLICE_3B_SMALL_OBJECT_OPTIMIZATION.md
-docs/evidence/SLICE_3C_PARETO_OPTIMIZATION.md
 
 # Archives and temporary files
 **/*.zip

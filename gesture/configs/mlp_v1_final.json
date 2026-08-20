@@ -1,0 +1,44 @@
+{
+  "schema_version": "gesture_mlp_production_v1",
+  "experiment_name": "mlp_v1_final",
+  "purpose": "ALL_DATA_PRODUCTION_TRAINING_NOT_GENERALIZATION_EVALUATION",
+  "frozen_recipe_source": "gesture/configs/mlp_v1.json",
+  "authoritative_manifest": "gesture/data/v1/manifests/authoritative_samples.jsonl",
+  "expected_manifest_sha256": "52ceb56eaf40b29cc50e023f9bd34f6119512d77e0c8f9866236b0c8ce52043f",
+  "expected_sample_count": 2786,
+  "preprocessing_version": "wrist-palm-canonical-v1",
+  "seed": 20260820,
+  "device": "cpu",
+  "torch_num_threads": 1,
+  "class_order_source": "gesture.contracts.GESTURE_CLASSES",
+  "model": {
+    "input_dim": 63,
+    "hidden_dims": [128, 64],
+    "dropout": [0.2, 0.15],
+    "output_dim": 7
+  },
+  "training": {
+    "epochs": 80,
+    "batch_size": 64,
+    "optimizer": "AdamW",
+    "learning_rate": 0.001,
+    "weight_decay": 0.0001,
+    "loss": "CrossEntropyLoss",
+    "class_weighting": false,
+    "shuffle_train": true,
+    "num_workers": 0,
+    "checkpoint_policy": "FINAL_EPOCH_NO_EVAL_SELECTION",
+    "early_stopping": false
+  },
+  "thumb_veto": {
+    "formula": "(||L4-L2|| / (||L3-L2|| + ||L4-L3||)) * ||L4-mean(L0,L5,L9,L13,L17)||",
+    "applies_only_when_predicted_class": "AUTO_LAND",
+    "minimum_auto_land_retention": 0.98,
+    "threshold_policy": "HIGHEST_ORDER_STATISTIC_RETAINING_AT_LEAST_98_PERCENT",
+    "calibration_scope": "PRODUCTION_ALL_DATA_NOT_GENERALIZATION_EVIDENCE",
+    "rejected_status": "REJECTED_BY_THUMB_VETO",
+    "automatic_relabel": false
+  },
+  "output_directory": "gesture/experiments/mlp_v1/final",
+  "onnx_gate_config": "gesture/configs/mlp_v1_onnx.json"
+}

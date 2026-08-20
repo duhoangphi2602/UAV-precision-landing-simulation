@@ -1,0 +1,11 @@
+# Direct Slice 5 dependencies resolved in the dedicated CPU environment.
+# Install torch from https://download.pytorch.org/whl/cpu.
+mediapipe==1.0.1
+opencv-contrib-python==5.0.0.93
+numpy==2.2.6
+torch==2.13.0+cpu
+onnx==1.22.0
+onnxruntime==1.23.2
+scikit-learn==1.7.2
+matplotlib==3.10.9
+pytest==9.1.1

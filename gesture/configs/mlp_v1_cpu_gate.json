@@ -1,0 +1,21 @@
+{
+  "schema_version": "gesture_mlp_cpu_deployment_gate_v1",
+  "runtime_config": "gesture/configs/onnx_runtime_v1.json",
+  "pytorch_checkpoint": "gesture/experiments/mlp_v1/final/model.pt",
+  "expected_pytorch_checkpoint_sha256": "7109a1484319ea4d10432261f1758d932f796907b2cd6ebcd48371cd1657d1f1",
+  "authoritative_manifest": "gesture/data/v1/manifests/authoritative_samples.jsonl",
+  "expected_sample_count": 2786,
+  "full_parity": {
+    "absolute_tolerance": 0.00001,
+    "relative_tolerance": 0.00001,
+    "required_argmax_agreement": 1.0
+  },
+  "benchmark": {
+    "batch_size": 1,
+    "warmup_iterations": 1000,
+    "measured_iterations": 10000,
+    "pytorch_num_threads": 1
+  },
+  "output": "gesture/experiments/mlp_v1/final/cpu_deployment_gate.json",
+  "metric_scope": "DEPLOYMENT_EQUIVALENCE_AND_CLASSIFIER_ONLY_CPU_PERFORMANCE_NOT_GENERALIZATION"
+}

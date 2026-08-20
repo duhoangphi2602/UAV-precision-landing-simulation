@@ -1,0 +1,47 @@
+{
+  "schema_version": "gesture_mlp_baseline_v1",
+  "experiment_name": "mlp_v1",
+  "terminology": "GROUPED CROSS-HAND 2-FOLD CV",
+  "seed": 20260820,
+  "device": "cpu",
+  "torch_num_threads": 1,
+  "class_order_source": "gesture.contracts.GESTURE_CLASSES",
+  "model": {
+    "input_dim": 63,
+    "hidden_dims": [128, 64],
+    "dropout": [0.2, 0.15],
+    "output_dim": 7
+  },
+  "training": {
+    "epochs": 80,
+    "batch_size": 64,
+    "optimizer": "AdamW",
+    "learning_rate": 0.001,
+    "weight_decay": 0.0001,
+    "loss": "CrossEntropyLoss",
+    "class_weighting": false,
+    "class_weighting_reason": "Per-fold class counts differ by at most 9 samples after bounded QA remediation.",
+    "shuffle_train": true,
+    "num_workers": 0,
+    "checkpoint_policy": "FINAL_EPOCH_NO_EVAL_SELECTION",
+    "early_stopping": false
+  },
+  "evaluation": {
+    "high_confidence_error_threshold": 0.9,
+    "confidence_histogram_bins": 10,
+    "eval_each_epoch_diagnostic_only": true
+  },
+  "folds": {
+    "fold_a": {
+      "direction": "RIGHT_TO_LEFT",
+      "train_manifest": "gesture/data/v1/splits/grouped_2fold/fold_a_train.jsonl",
+      "eval_manifest": "gesture/data/v1/splits/grouped_2fold/fold_a_eval.jsonl"
+    },
+    "fold_b": {
+      "direction": "LEFT_TO_RIGHT",
+      "train_manifest": "gesture/data/v1/splits/grouped_2fold/fold_b_train.jsonl",
+      "eval_manifest": "gesture/data/v1/splits/grouped_2fold/fold_b_eval.jsonl"
+    }
+  },
+  "output_directory": "gesture/experiments/mlp_v1"
+}

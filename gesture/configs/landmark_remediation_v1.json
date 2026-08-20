@@ -1,0 +1,107 @@
+{
+  "schema_version": "gesture_landmark_remediation_v1",
+  "dataset": "gesture_dataset_v1",
+  "policy": "exclude_only_proven_bad_samples_preserve_source_images",
+  "metadata_corrections": [],
+  "session_evidence": {
+    "subject01-left-s01-right-mixed": {
+      "declared_hand": "right",
+      "detected_right": 198,
+      "detected_left": 2,
+      "decision": "SESSION_METADATA_CORRECT"
+    },
+    "subject01-right-s02-left-mixed": {
+      "declared_hand": "left",
+      "detected_left": 191,
+      "detected_right": 9,
+      "decision": "SESSION_METADATA_CORRECT"
+    }
+  },
+  "exclusions": [
+    {
+      "sample_id": "subject01-left-s01-right-mixed-000143",
+      "decision": "EXCLUDE",
+      "handedness_classification": "B_MEDIAPIPE_TRANSIENTLY_WRONG",
+      "outlier_classification": null,
+      "reason": "Isolated detected Left in a 198/200 Right session; image shows the declared right hand and valid LEFT pose."
+    },
+    {
+      "sample_id": "subject01-left-s01-right-mixed-000144",
+      "decision": "EXCLUDE",
+      "handedness_classification": "C_INVALID_SAMPLE",
+      "outlier_classification": "LANDMARK_FAILURE",
+      "reason": "Detected hand conflicts with the correct session; palm scale 0.031807 is near-zero and collapsed landmarks amplify the normalized feature to 7.141943."
+    },
+    {
+      "sample_id": "subject01-right-s02-left-mixed-000012",
+      "decision": "EXCLUDE",
+      "handedness_classification": "B_MEDIAPIPE_TRANSIENTLY_WRONG",
+      "outlier_classification": null,
+      "reason": "Isolated detected Right in a 191/200 Left session; frame shows the declared left hand with the RIGHT pinky-only pose."
+    },
+    {
+      "sample_id": "subject01-right-s02-left-mixed-000079",
+      "decision": "EXCLUDE",
+      "handedness_classification": "B_MEDIAPIPE_TRANSIENTLY_WRONG",
+      "outlier_classification": null,
+      "reason": "Dorsal/oblique left-hand view caused an isolated handedness inversion."
+    },
+    {
+      "sample_id": "subject01-right-s02-left-mixed-000082",
+      "decision": "EXCLUDE",
+      "handedness_classification": "B_MEDIAPIPE_TRANSIENTLY_WRONG",
+      "outlier_classification": null,
+      "reason": "Dorsal/oblique left-hand view caused an isolated handedness inversion."
+    },
+    {
+      "sample_id": "subject01-right-s02-left-mixed-000088",
+      "decision": "EXCLUDE",
+      "handedness_classification": "B_MEDIAPIPE_TRANSIENTLY_WRONG",
+      "outlier_classification": null,
+      "reason": "Session identity and image confirm left hand; MediaPipe handedness is transiently wrong."
+    },
+    {
+      "sample_id": "subject01-right-s02-left-mixed-000089",
+      "decision": "EXCLUDE",
+      "handedness_classification": "B_MEDIAPIPE_TRANSIENTLY_WRONG",
+      "outlier_classification": null,
+      "reason": "Session identity and image confirm left hand; MediaPipe handedness is transiently wrong."
+    },
+    {
+      "sample_id": "subject01-right-s02-left-mixed-000093",
+      "decision": "EXCLUDE",
+      "handedness_classification": "B_MEDIAPIPE_TRANSIENTLY_WRONG",
+      "outlier_classification": null,
+      "reason": "Session identity and image confirm left hand; MediaPipe handedness is transiently wrong."
+    },
+    {
+      "sample_id": "subject01-right-s02-left-mixed-000094",
+      "decision": "EXCLUDE",
+      "handedness_classification": "B_MEDIAPIPE_TRANSIENTLY_WRONG",
+      "outlier_classification": null,
+      "reason": "Session identity and image confirm left hand; MediaPipe handedness is transiently wrong."
+    },
+    {
+      "sample_id": "subject01-right-s02-left-mixed-000095",
+      "decision": "EXCLUDE",
+      "handedness_classification": "B_MEDIAPIPE_TRANSIENTLY_WRONG",
+      "outlier_classification": null,
+      "reason": "Session identity and image confirm left hand; MediaPipe handedness is transiently wrong."
+    },
+    {
+      "sample_id": "subject01-right-s02-left-mixed-000109",
+      "decision": "EXCLUDE",
+      "handedness_classification": "C_AMBIGUOUS_BAD_CAPTURE",
+      "outlier_classification": "BAD_CAPTURE",
+      "reason": "Heavy motion blur makes handedness and landmark geometry unreliable."
+    },
+    {
+      "sample_id": "subject01-left-s01-right-mixed-000146",
+      "decision": "EXCLUDE",
+      "handedness_classification": null,
+      "outlier_classification": "LANDMARK_FAILURE",
+      "reason": "Image contains the valid LEFT pose, but collapsed palm geometry (scale 0.060171) amplifies the normalized feature to 4.390907."
+    }
+  ],
+  "original_images_mutated": false
+}

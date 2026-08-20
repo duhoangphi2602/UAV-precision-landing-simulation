@@ -1,0 +1,38 @@
+{
+  "schema_version": "gesture_thumb_veto_v1",
+  "experiment_name": "thumb_veto_v1",
+  "terminology": "GROUPED CROSS-HAND 2-FOLD CV",
+  "class_order_source": "gesture.contracts.GESTURE_CLASSES",
+  "input_representation": "FROZEN_WRIST_PALM_CANONICAL_63D",
+  "rule": {
+    "name": "THUMB_STRAIGHTNESS_TIMES_PALM_REACH",
+    "applies_only_when_predicted_class": "AUTO_LAND",
+    "rejected_status": "REJECTED_BY_THUMB_VETO",
+    "minimum_train_auto_land_retention": 0.98,
+    "threshold_derivation": "HIGHEST_TRAIN_AUTO_LAND_ORDER_STATISTIC_RETAINING_AT_LEAST_98_PERCENT",
+    "threshold_scope": "TRAIN_FOLD_ONLY"
+  },
+  "acceptance": {
+    "maximum_auto_land_false_positive_rate": 0.01,
+    "maximum_auto_land_recall_loss": 0.02,
+    "minimum_auto_land_false_positive_reduction_fraction": 0.8,
+    "require_takeoff_safety_metrics_unchanged": true
+  },
+  "folds": {
+    "fold_a": {
+      "direction": "RIGHT_TO_LEFT",
+      "train_manifest": "gesture/data/v1/splits/grouped_2fold/fold_a_train.jsonl",
+      "eval_manifest": "gesture/data/v1/splits/grouped_2fold/fold_a_eval.jsonl",
+      "predictions": "gesture/experiments/mlp_v1/fold_a/predictions.jsonl",
+      "raw_metrics": "gesture/experiments/mlp_v1/fold_a/metrics.json"
+    },
+    "fold_b": {
+      "direction": "LEFT_TO_RIGHT",
+      "train_manifest": "gesture/data/v1/splits/grouped_2fold/fold_b_train.jsonl",
+      "eval_manifest": "gesture/data/v1/splits/grouped_2fold/fold_b_eval.jsonl",
+      "predictions": "gesture/experiments/mlp_v1/fold_b/predictions.jsonl",
+      "raw_metrics": "gesture/experiments/mlp_v1/fold_b/metrics.json"
+    }
+  },
+  "output_directory": "gesture/experiments/mlp_v1/thumb_veto_v1"
+}
