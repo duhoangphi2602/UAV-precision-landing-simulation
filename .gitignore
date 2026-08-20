@@ -49,3 +49,50 @@ Thumbs.db
 # Project-Specific Local Outputs
 dist/
 *.egg-info/
+
+# Python / environments (additional)
+**/.venv/
+**/venv/
+**/__pycache__/
+**/*.py[cod]
+
+# Gesture datasets and local MediaPipe assets
+gesture/data/**
+gesture/models/**
+gesture/references/**
+
+# Generated training/deployment runs and models
+gesture/experiments/**
+runs/**
+wandb/**
+**/*.pt
+**/*.pth
+**/*.onnx
+**/*.engine
+**/*.plan
+**/*.trt
+**/*.cache
+
+# Generated model reports and plots
+**/results.csv
+**/results.png
+**/confusion_matrix*.png
+**/PR_curve*.png
+**/P_curve*.png
+**/R_curve*.png
+**/F1_curve*.png
+**/labels.jpg
+**/val_batch*_labels.jpg
+**/val_batch*_pred.jpg
+**/events.out.tfevents*
+
+# Archives and temporary files
+**/*.zip
+**/*.tar
+**/*.tar.gz
+**/*.7z
+*.log
+*.tmp
+
+# Artifacts
+artifacts

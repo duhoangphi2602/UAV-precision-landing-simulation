@@ -2,6 +2,13 @@
 set -Eeuo pipefail
 
 mkdir -p artifacts/logs
+
+cleanup() {
+    echo "Stopping fixed-demo containers..."
+    docker rm -f px4_sitl ros_bridge aruco viewer mission cpp_control >/dev/null 2>&1 || true
+}
+trap cleanup EXIT
+
 ./scripts/allow_x11.sh
 
 if [ ! -d "drone_landing_ws/install" ]; then
@@ -18,22 +25,32 @@ sleep 2
 
 docker compose run -d --name aruco simulation bash -c "ros2 run px4_vision_autonomy aruco_detector --ros-args -p camera_topic:=/camera"
 docker compose run -d --name viewer simulation bash -c "ros2 run px4_vision_autonomy camera_viewer"
-docker compose run -d --name cpp_control simulation bash -c "ros2 launch precision_landing_control_cpp control_cpp.launch.py"
+docker compose run -d --name cpp_control simulation bash -c "ros2 launch precision_landing_control_cpp control_cpp.launch.py interface_mode:=typed"
 docker compose run -d --name mission simulation bash -c "ros2 run px4_vision_autonomy mission_commander --ros-args -p control_source:=external_cpp -p wp_north:=0.0 -p wp_east:=5.8 -p wp_down:=-3.0 -p flip_x:=true -p flip_y:=true"
 
 echo "Demo is running."
 sleep 5
 wait_time=0
 mission_done=false
+mission_succeeded=false
 while [ $wait_time -lt 300 ]; do
-    if docker logs mission 2>&1 | grep -q -E "Mission Complete|FAILED|FAILSAFE|Landing timeout"; then
-        echo "Mission terminal state reached!"
+    if docker logs mission 2>&1 | grep -q "Mission Complete"; then
+        echo "Mission completed with verified disarm."
+        mission_done=true
+        mission_succeeded=true
+        break
+    fi
+    if docker logs mission 2>&1 | grep -q -E "MISSION_FAILED|FAILSAFE|Landing timeout"; then
+        echo "Mission reported an explicit failure."
         mission_done=true
         break
     fi
     if ! docker ps | grep -q "mission"; then
         echo "Mission container exited."
         mission_done=true
+        if docker logs mission 2>&1 | grep -q "Mission Complete"; then
+            mission_succeeded=true
+        fi
         break
     fi
     sleep 5
@@ -42,6 +59,11 @@ done
 
 if [ "$mission_done" = false ]; then
     echo "TIMEOUT: Mission did not finish in 300s."
+fi
+
+if [ "$mission_succeeded" = true ]; then
+    echo "Observing terminal state for 5 seconds..."
+    sleep 5
 fi
 
 echo "================ SAVING ALL LOGS ================"
@@ -54,4 +76,7 @@ docker logs px4_sitl > artifacts/logs/demo_cpp_px4.log 2>&1 || true
 echo "=============================================="
 
 echo "Demo script finished."
-./scripts/stop_demo.sh
+
+if [ "$mission_succeeded" = false ]; then
+    exit 1
+fi

@@ -1,0 +1,34 @@
+{
+  "schema_version": "gesture_mlp_onnx_gate_v1",
+  "purpose": "EXPORT_AND_NUMERICALLY_VALIDATE_FINAL_CLASSIFIER_ONLY",
+  "checkpoint": "gesture/experiments/mlp_v1/final/model.pt",
+  "expected_checkpoint_sha256": "7109a1484319ea4d10432261f1758d932f796907b2cd6ebcd48371cd1657d1f1",
+  "preprocessing": "gesture/experiments/mlp_v1/final/preprocessing.json",
+  "expected_preprocessing_sha256": "09afa7821c0f5e719ede1848e50597e0750efc90f7b1febf82de0ea138e4428d",
+  "deployment_config": "gesture/experiments/mlp_v1/final/deployment_config.json",
+  "expected_deployment_config_sha256": "32be9fed57903aff41582eda86b7363e23cd550953b8ffa45cd1b2322f5255f9",
+  "parity_manifest": "gesture/data/v1/manifests/authoritative_samples.jsonl",
+  "parity_sample_count": 256,
+  "parity_scope": "NUMERICAL_EQUIVALENCE_ON_PRODUCTION_TRAINING_INPUTS_NOT_GENERALIZATION",
+  "onnx_output": "gesture/experiments/mlp_v1/final/model.onnx",
+  "validation_output": "gesture/experiments/mlp_v1/final/onnx_validation.json",
+  "opset_version": 17,
+  "input": {
+    "name": "features",
+    "dtype": "float32",
+    "shape": ["N", 63],
+    "dynamic_batch": true
+  },
+  "output": {
+    "name": "logits",
+    "dtype": "float32",
+    "shape": ["N", 7],
+    "dynamic_batch": true
+  },
+  "runtime": {
+    "provider": "CPUExecutionProvider",
+    "absolute_tolerance": 0.00001,
+    "relative_tolerance": 0.00001
+  },
+  "media_pipe_in_onnx": false
+}
